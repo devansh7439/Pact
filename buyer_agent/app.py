@@ -176,7 +176,10 @@ def create_app(
                 raise HTTPException(409, "draft a mandate first")
             mandate = Mandate.model_validate(drafts[0]["body"])
         base = (req.base_url or settings.merchant_base_url).rstrip("/")
-        client = PRPClient(base, priv, agent_key_id, http=http, clock=lambda: clock().timestamp())
+        link = store.merchant_link(merchant_id)
+        pinned = (MerchantKey(link["merchant_key_id"], keys.public_from_b64(link["merchant_public_key"]))
+                  if link and link.get("merchant_public_key") and link.get("merchant_key_id") else None)
+        client = PRPClient(base, priv, agent_key_id, pinned, http=http, clock=lambda: clock().timestamp())
         body: dict[str, Any] = {
             "prp_version": "0.1", "agent_id": agent_id, "agent_key_id": agent_key_id,
             "agent_public_key": keys.public_to_b64(priv.public_key()),
@@ -186,6 +189,8 @@ def create_app(
             body["callback_url"] = settings.buyer_public_url.rstrip("/") + "/prp/callback"
         resp = await client.register(body)
         if not resp.signature_ok:
+            if resp.status != 201 and resp.signature_error == "UNVERIFIED_ERROR":
+                raise HTTPException(resp.status, f"merchant returned {resp.status} (unsigned or unverifiable error)")
             raise HTTPException(502, f"merchant response failed verification: {resp.signature_error}")
         if resp.status != 201:
             raise HTTPException(resp.status, resp.body)

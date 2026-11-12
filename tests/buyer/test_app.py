@@ -26,6 +26,7 @@ class Merchant:
         self.key = keys.generate()
         self.calls = []
         self.script = []
+        self.register_conflict = False
 
     def handler(self, req: httpx.Request) -> httpx.Response:
         path = req.url.path
@@ -36,7 +37,10 @@ class Merchant:
             ]})
         body = json.loads(req.content) if req.content else None
         self.calls.append((req.method, path, body))
-        if path == "/agent/v1/register":
+        if path == "/agent/v1/register" and self.register_conflict:
+            status, resp = 409, {"prp_version": "0.1",
+                                 "error": {"code": "OUTSIDE_MANDATE", "message": "agent already registered"}}
+        elif path == "/agent/v1/register":
             status, resp = 201, {
                 "prp_version": "0.1", "agent_id": body["agent_id"], "merchant_id": fx.MERCHANT_ID,
                 "merchant_name": fx.MERCHANT_NAME, "merchant_public_key": keys.public_to_b64(self.key.public_key()),
@@ -79,6 +83,14 @@ def test_mandate_drafted_from_words_with_template():
     assert m["per_purchase_cap_minor"] == 5000 and m["allowed_categories"] == ["coffee"]
     assert "RISK_BLOCKED" in m["recovery"]["always_escalate_classes"]
     assert c.post("/buyer/mandates/draft", json={"text": "buy me stuff"}).status_code == 422
+
+
+def test_reregister_error_surfaces_merchant_status_not_bad_signature():
+    m, c = setup()
+    m.register_conflict = True
+    r = c.post(f"/buyer/merchants/{fx.MERCHANT_ID}/connect", json={"base_url": "http://merchant.test"})
+    assert r.status_code == 409  # verified against the pinned key, real status surfaced
+    assert "already registered" in r.text
 
 
 def test_register_sends_signed_public_key():

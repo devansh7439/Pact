@@ -103,6 +103,18 @@ class PRPClient:
         msg = signing.sign(self._priv, self.key_id, "POST", path, body, timestamp=now)
         resp = await self._http.post(self.base_url + path, content=msg.body, headers=msg.headers)
         raw = resp.content
+        if resp.status_code != 201:
+            # Error bodies carry no key. Verify against a key we already pinned if we
+            # have one; otherwise surface the status as an unverified error rather
+            # than masking it as BAD_SIGNATURE.
+            if self.merchant_key is not None:
+                try:
+                    v = signing.verify(resp.headers, "POST", path, raw, self._resolve, self._nonces,
+                                       now=int(self._clock()))
+                    return PRPResponse(resp.status_code, v.body, raw, True)
+                except PRPAuthError as e:
+                    return PRPResponse(resp.status_code, None, raw, False, e.code)
+            return PRPResponse(resp.status_code, None, raw, False, "UNVERIFIED_ERROR")
         try:
             unverified = signing.parse_canonical(raw)
             captured["k"] = MerchantKey(
@@ -112,8 +124,7 @@ class PRPClient:
         except (PRPAuthError, KeyError, TypeError, ValueError) as e:
             code = e.code if isinstance(e, PRPAuthError) else "BAD_SIGNATURE"
             return PRPResponse(resp.status_code, None, raw, False, code)
-        if resp.status_code == 201:
-            self.merchant_key = captured["k"]
+        self.merchant_key = captured["k"]
         return PRPResponse(resp.status_code, v.body, raw, True)
 
     async def checkout(self, body: dict[str, Any]) -> PRPResponse:

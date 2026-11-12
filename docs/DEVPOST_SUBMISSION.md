@@ -89,9 +89,9 @@ Our rule: **models advise; deterministic policy and the human's mandate decide.*
 - **Neither side can forge the other.** The merchant can't fake an "agent accepted" message without the buyer's private key, and the buyer can't fake an offer without the merchant's.
 - **Verified against the real sandbox** with PayPal test cards triggering `5110`, `5120` and `9500`.
 
-### Built during the hackathon & pre-existing work
+### Built during the hackathon
 
-- **Built during the hackathon:** the full PayPal integration (Orders v2, Vault v3, stored credentials, webhook verification, Agent Toolkit); PRP v0.1 with Ed25519 signing; the buyer agent service, mandate store and 12-check guard; the bandit learning loop; Ask Pact; and the Next.js app, linked visualizer and AG Grid console.
+- The full PayPal integration (Orders v2, Vault v3, stored credentials, webhook verification, Agent Toolkit); PRP v0.1 with Ed25519 signing; the buyer agent service, mandate store and 12-check guard; the bandit learning loop; Ask Pact; and the Next.js app, linked visualizer and AG Grid console.
 
 ### AG Grid
 

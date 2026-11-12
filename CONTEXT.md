@@ -13,11 +13,6 @@ The **buyer agent** checks the offer against a **mandate** its human approved, t
 PayPal on its own or escalates to the human. The rule throughout: **models predict, policies decide,
 LLMs explain. No LLM output can move money.**
 
-**Prior work.** The merchant decision engine builds on the author's earlier work. The single
-prior-work disclosure lives in three places only: the README, `docs/DEVPOST_SUBMISSION.md` and
-`devpost-media/submission-email.txt`. Keep it accurate there and don't mention the earlier project
-anywhere else (code comments, docs, UI).
-
 ## 2. Layout
 
 ```

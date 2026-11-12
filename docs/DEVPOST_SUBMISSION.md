@@ -22,89 +22,83 @@
 
 ### Inspiration
 
-AI agents are starting to buy goods, book travel, and settle invoices on our behalf. When a human's card declines, they see the error, pick a different card, or top up their balance. When an **AI agent's** payment declines, **nobody is sitting at the checkout screen**. 
+Maya tells her shopping agent: *"Reorder my coffee beans. Keep it under $60 a week."* At 2 a.m. the agent checks out, and her card declines for insufficient funds.
 
-Every existing recovery tool (dunning emails, SMS, push notifications, "update your billing info" banners) assumes a human is reading the message. Agents either retry blindly into the processor—burning fees and triggering risk blocks—or fail silently, abandoning the order.
+If Maya were at the checkout, she'd switch to her PayPal balance and move on. Her agent can't do that. Every recovery tool merchants have (dunning emails, SMS, "update your billing info" banners) assumes a person reads the message. So agents do one of two things: retry the same card until the processor flags them, or give up and let the order quietly die.
 
-We built **Pact** to fix this. Pact is the payment recovery infrastructure for agentic commerce on PayPal: a merchant-side decision engine that scores recovery options using expected net value, and a buyer-side guard that cryptographically verifies recovery offers against human spending mandates before moving a single cent.
+We built **Pact** for that moment. It's payment recovery for AI agents on PayPal, split into two halves that don't trust each other. The merchant decides which recoveries are worth offering. The buyer's agent checks every offer against the limits Maya set before a cent moves.
 
 ### What it does
 
-Pact introduces an open, two-sided protocol—the **Pact Recovery Protocol (PRP v0.1)**—with two independent, non-custodial guardrails:
+The two sides talk over the **Pact Recovery Protocol (PRP v0.1)**, a small signed protocol we wrote. Neither side holds the other's money or keys.
 
-1. **Merchant Recovery Engine (`pact-merchant`):**
-   - **Diagnoses Decline Signals:** Interprets 34 PayPal processor codes (`00N7`, `5100`–`5210`, `9500` Suspected Fraud) and 20 Orders v2 API issues (`INSTRUMENT_DECLINED`, `PAYER_ACTION_REQUIRED`).
-   - **Computes Net Expected Value (NEV):** Evaluates every recovery action $a$ against doing nothing (the baseline $a_0$):
-     $$\text{NEV}(a) = (\hat{P}(a) - \hat{P}(a_0)) \times (\text{Amount} \times \text{Margin}) - \text{Fee}(a) - \text{Cost}(a)$$
-     If no action clears the merchant's profit floor (e.g., chasing a $4 add-on), Pact **drops the recovery** rather than wasting processor fees.
-   - **Issues Signed PRP Offers:** Returns an `HTTP 402 Payment Required` response containing machine-readable options signed with the merchant's Ed25519 private key.
-   - **10% Live Causal Holdout:** Reserves a deterministic 10% holdout group (salted SHA-256 hash) to measure true causal recovery lift against organic retries.
+**One decline, end to end**
 
-2. **Buyer Agent Guard (`pact-buyer`):**
-   - **12 Hard Invariants (G1–G12):** Evaluates recovery offers against Maya's pre-approved mandate (weekly ceiling, per-order cap, authorized funding priority, category whitelist, merchant domain).
-   - **Autonomous Alternate Funding:** If Maya's primary card fails for insufficient funds (`5120`), her agent autonomously switches to her pre-vaulted PayPal wallet without human intervention.
-   - **Zero Autonomy on Risk:** On suspected fraud (`9500`) or exceeded retry limits, autonomous actions are strictly barred, delivering an instant one-tap approval link to Maya's inbox.
-   - **Adversarial Prompt Shield:** Recovery offers are strictly parsed as data schemas; prompt injection attacks embedded in checkout text are quarantined and dropped.
+1. Maya's agent captures a $42 order. PayPal returns processor code `5120` (insufficient funds).
+2. The merchant engine classifies the decline, scores each recovery option by net expected value, and replies `HTTP 402 Payment Required` with a signed offer: *retry with a different funding source*.
+3. Maya's agent verifies the signature and runs the offer through 12 checks against her mandate. The amount hasn't changed, the merchant is on her list, she has budget left, and her mandate allows switching to her vaulted PayPal wallet.
+4. The agent captures with the wallet. The order goes through. Maya gets a receipt, not a problem to solve.
+
+If the code had been `9500` (suspected fraud), step 3 would stop. Risk declines are never recovered automatically; Maya gets a one-tap approval link instead.
+
+**Merchant side (`pact-merchant`)**
+
+- **Reads the decline.** Maps 34 PayPal processor codes (`00N7`, `5100`–`5210`, `9500`, …) and 20 Orders v2 issues (`INSTRUMENT_DECLINED`, `PAYER_ACTION_REQUIRED`, …) to failure classes.
+- **Prices every option.** Each recovery action \\( a \\) is compared against doing nothing (\\( a_0 \\)):
+
+$$\text{NEV}(a) = \big(\hat{P}(a) - \hat{P}(a_0)\big) \times \text{Amount} \times \text{Margin} - \text{Fee}(a) - \text{Cost}(a)$$
+
+  If no option clears the merchant's profit floor (chasing a $4 add-on, say), Pact doesn't try. A recovery that costs more than it earns isn't a recovery.
+- **Signs the offer.** Options go out as machine-readable JSON signed with the merchant's Ed25519 key.
+- **Measures itself honestly.** A deterministic 10% of declines (salted SHA-256) get no intervention, so the dashboard reports lift over what would have recovered anyway.
+
+**Buyer side (`pact-buyer`)**
+
+- **12 checks before money moves (G1–G12):** valid signature; known offer format; not expired; merchant allowed; amount unchanged from the original order; within the per-order cap and weekly budget; failure class allowed for autonomous recovery; retry attempts left; and a funding source from Maya's approved list that hasn't already failed. Anything else goes to Maya.
+- **Never auto-recovers risk declines.** Suspected fraud always goes to the human.
+- **Treats offers as data, not instructions.** Every field is parsed through strict schemas, and text that tries to instruct the agent is quarantined and dropped.
 
 ### How we built it
 
-- **PayPal Orders v2 & Vault v3:**
-  - Real-time order capture (`POST /v2/checkout/orders/{id}/capture`) with idempotency headers (`PayPal-Request-Id`).
-  - Saved PayPal wallet and card payment tokens via Vault v3 setup tokens (`POST /v3/vault/setup-tokens` exchanged for permanent `vault_id`s).
-  - Stored-credential indicators: Charges declare `payment_initiator: CUSTOMER`, `payment_type: ONE_TIME`, and `usage: SUBSEQUENT` to accurately reflect the agent acting as the customer's authorized delegate.
-- **PayPal Webhooks with Signature Verification:**
-  - Consumes and verifies 7 webhook events (`PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DECLINED`, `VAULT.PAYMENT-TOKEN.CREATED`, etc.) using PayPal's cryptographic verification API (`POST /v1/notifications/verify-webhook-signature`).
-- **Cryptographic Protocol (PRP v0.1):**
-  - High-speed Ed25519 asymmetric signatures over canonical JSON, binding HTTP method, URL path, timestamp (±300s skew check), and anti-replay nonces.
-- **Machine Learning & Decision Economics:**
-  - Calibrated scikit-learn Logistic Regression / Gradient Boosting propensity model trained on decline features.
-  - Bayesian Multi-Armed Bandit (Beta-Bernoulli conjugate priors via Thompson Sampling) to continuously learn recovery efficacy per failure class while bounding exploration risk.
-- **Frontend & Visualization:**
-  - Next.js 14, React, TypeScript, and Tailwind CSS.
-  - Interactive AG Grid decision ledger with pinned NEV columns and master-detail drawer.
-  - Two-pane linked view visualizing the merchant diagnosis and buyer guard checklist side-by-side on a unified chronological timeline.
+- **PayPal Orders v2 and Vault v3.** Captures go through `POST /v2/checkout/orders/{id}/capture` with `PayPal-Request-Id`, so a retry can never double-charge. At onboarding, Vault v3 setup tokens are exchanged for permanent `vault_id`s. Agent charges carry stored-credential fields (`payment_initiator: CUSTOMER`, `payment_type: ONE_TIME`, `usage: SUBSEQUENT`) that mark the agent as the customer's authorized delegate.
+- **Webhooks.** Seven events (`PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DECLINED`, `VAULT.PAYMENT-TOKEN.CREATED`, …) are verified with `POST /v1/notifications/verify-webhook-signature`. When a webhook and a reconciler poll race on the same capture, exactly one outcome is recorded.
+- **PRP v0.1.** Ed25519 signatures over canonical JSON bind the HTTP method, path, timestamp (±300 s) and a single-use nonce, so a captured offer can't be replayed or redirected to another endpoint.
+- **Models.** An isotonic-calibrated random forest (scikit-learn) estimates \\( \hat{P} \\). A Beta-Bernoulli bandit with Thompson sampling learns which actions work for each failure class, with exploration capped so learning never spends past the profit floor.
+- **Stack.** Python 3.12, FastAPI, Pydantic and SQLite on the backend; Next.js 14, React, TypeScript, Tailwind and AG Grid on the frontend. One linked view puts the merchant's diagnosis and the buyer's checklist on a single timeline.
 
 ### AI tools used and how
 
-In Pact, **models advise, but deterministic policies and human mandates decide**:
-- **Calibrated Propensity Model (scikit-learn):** Predicts recovery probability per action $\hat{P}(a)$ and baseline probability $\hat{P}(a_0)$ to calculate expected revenue lift. Displayed transparently in the per-option inspector.
-- **Bayesian Multi-Armed Bandit:** Dynamically adjusts action selection priors using Thompson Sampling across failure classes without risking capital beyond the configured floor.
-- **Natural Language Parsing & Customer Explanations (LLM):** Parses unstructured shopper requests into structured JSON mandates and drafts empathetic, dark-pattern-free customer recovery emails.
-- **PayPal Agent Toolkit:** Read-only integration powering **Ask Pact**, allowing merchants to audit historical declines, explain algorithmic decisions, and query PayPal order states without moving money.
-- **Strict Boundary Guardrail:** No LLM or generative model has access to tools that execute captures, modify amounts, or alter authorizations.
+Our rule: **models advise; deterministic policy and the human's mandate decide.**
+
+- **Propensity model:** predicts \\( \hat{P}(a) \\) and \\( \hat{P}(a_0) \\). Every prediction is visible in the per-option inspector next to the arithmetic it feeds.
+- **Bandit:** shifts action priors as real outcomes arrive, inside the same profit floor.
+- **LLM:** turns Maya's plain-English request into a structured mandate and drafts recovery emails without dark patterns. With no API key, both fall back to templates.
+- **PayPal Agent Toolkit:** powers **Ask Pact**, a read-only assistant merchants can ask "why did we drop this recovery?" or "what state is this order in?"
+- **The boundary:** no model can call anything that captures funds, changes an amount or touches an authorization.
 
 ### Challenges we ran into
 
-1. **Autonomous Agency vs. Payment Consent:** An agent's internal mandate does not constitute legal payment authorization to charge a payment method. We solved this by enforcing a two-tier consent model: PayPal Vault authorization is established directly by the human at onboarding; the agent's mandate only controls *when the agent is permitted to request that authorization*.
-2. **Measuring True Causal Lift:** Blind retries often recover payments organically (e.g. temporary issuer hiccups), leading traditional recovery systems to claim false credit. We implemented a strict 10% live causal holdout group with Wilson 95% confidence intervals to measure real incremental revenue.
-3. **Adversarial Text Injections in Payment Metadata:** Payment memo fields and error payloads can carry prompt injections. We treated all incoming offer fields as untrusted data, routing them through strict Pydantic schemas and regex scanners before processing.
+1. **A mandate isn't payment consent.** "Spend up to $60 a week" tells the agent what it may do. It doesn't authorize PayPal to charge anything. We split consent in two: Maya authorizes the Vault token herself at onboarding, and the mandate only governs *when* the agent may use it.
+2. **Recovery tools take credit for luck.** Plenty of declines clear on their own: a brief issuer outage, a payday. Without a control group you can't tell recovery from luck, so we added the 10% live holdout and report lift with Wilson 95% confidence intervals.
+3. **Payment metadata is an attack surface.** Memo fields and error messages are text an attacker can write, and an LLM-driven agent will read them. Every offer field is untrusted: it goes through strict Pydantic schemas and injection scanners before anything acts on it.
 
 ### Accomplishments that we're proud of
 
-- **220 Automated Tests Passing:** Complete test coverage spanning unit, integration, invariant, and property-based tests running in CI on Python 3.12 and Node 20.
-- **Zero-Credential Offline Reliability:** The entire suite, including merchant decisions, buyer guardrails, and simulated PayPal processor declines, runs offline without requiring sandbox credentials.
-- **Real Two-Sided Cryptographic Independence:** Neither party can forge actions on behalf of the other. The merchant cannot fabricate an "agent accepted" response without the buyer's private key.
-- **End-to-End Sandbox Verification:** Verified real sandbox recoveries using PayPal test cards and processor decline codes (`5110`, `5120`, `9500`).
+- **220 tests, all passing:** unit, integration, invariant and property-based (Hypothesis), in CI on Python 3.12 and Node 20.
+- **Runs with zero credentials.** Merchant decisions, the buyer guard and simulated PayPal declines all work offline, so anyone can run the full flow without sandbox keys.
+- **Neither side can forge the other.** The merchant can't fake an "agent accepted" message without the buyer's private key, and the buyer can't fake an offer without the merchant's.
+- **Verified against the real sandbox** with PayPal test cards triggering `5110`, `5120` and `9500`.
 
-### Built during the hackathon & pre-existing work disclosure
+### Built during the hackathon & pre-existing work
 
-In full compliance with the hackathon rules regarding pre-existing work:
-- **Everything else was created entirely during the hackathon:**
-  - Complete PayPal integration (Orders v2, Vault v3, stored credentials, Webhook signature verification, PayPal Agent Toolkit).
-  - The PRP v0.1 protocol with Ed25519 request/response signing.
-  - The entire buyer agent service (`buyer_agent/`), mandate store, and 12-invariant guard (`guard.py`).
-  - The Bayesian Multi-Armed Bandit learning loop (`merchant/engine/bandit.py`).
-  - The Ask Pact read-only recovery assistant (`merchant/assistant/`).
-  - The Next.js web application, linked visualizer, and AG Grid decision console.
+- **Built during the hackathon:** the full PayPal integration (Orders v2, Vault v3, stored credentials, webhook verification, Agent Toolkit); PRP v0.1 with Ed25519 signing; the buyer agent service, mandate store and 12-check guard; the bandit learning loop; Ask Pact; and the Next.js app, linked visualizer and AG Grid console.
 
-### Sponsor Prizes: AG Grid
+### AG Grid
 
-We utilized **AG Grid** in the Merchant Console (`/merchant`) where high-density financial data requires industrial-grade performance:
-- **Decision Ledger:** Rendered complex recovery attempts with sortable columns, real-time filtering by failure class and provenance (`sandbox`, `fixture`, `simulated`), and pinned Net Expected Value (NEV) financial calculations.
-- **Master-Detail Flow:** Enabled one-click row selection to slide out the decision inspector, exposing the full underlying arithmetic, rule trace, and signed Ed25519 payload.
+The Merchant Console (`/merchant`) uses AG Grid for the **decision ledger**: every recovery attempt, sortable and filterable by failure class and by provenance (`sandbox`, `fixture`, `simulated`), with NEV columns pinned. Selecting a row opens a **master-detail** inspector showing the full arithmetic, the rule trace and the signed Ed25519 payload.
 
 ### What's next for Pact
 
-- **Standardizing PRP:** Publishing PRP (Pact Recovery Protocol) as an open RFC for agent-to-agent and merchant-to-agent payment negotiations.
-- **Subscription Renewals:** Expanding autonomous recovery to recurring PayPal billing failures (`BILLING.SUBSCRIPTION.PAYMENT.FAILED`).
-- **Hardware Enclave Signing:** Storing buyer and merchant Ed25519 private keys in secure hardware enclaves (AWS Nitro / Apple Secure Enclave) for institutional agent deployments.
+- **Publish PRP as an open RFC** for agent-to-merchant payment negotiation.
+- **Subscription renewals:** extend recovery to recurring billing failures (`BILLING.SUBSCRIPTION.PAYMENT.FAILED`).
+- **Hardware key storage:** keep signing keys in AWS Nitro Enclaves or Apple Secure Enclave for institutional deployments.

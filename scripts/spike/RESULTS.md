@@ -74,3 +74,802 @@ Ids carried between steps are kept in `scripts/spike/state.json`, which stays ou
 Each script appends redacted request/response pairs and PASS/FAIL notes below.
 
 <!-- spike-log: scripts append below this line -->
+
+### S1 · OAuth token · 2026-11-12 18:36:48Z
+
+`POST /v1/oauth2/token` → **200** · debug id `f75614476b70b`
+
+<details><summary>request / response (redacted)</summary>
+
+```json
+{
+  "headers": {
+    "Authorization": "[REDACTED]"
+  },
+  "body": {
+    "grant_type": "client_credentials"
+  }
+}
+```
+
+```json
+{
+  "scope": "https://uri.paypal.com/services/checkout/one-click-with-merchant-issued-token https://uri.paypal.com/services/payments/futurepayments https://uri.paypal.com/services/disputes/read-buyer https://uri.paypal.com/services/payments/realtimepayment https://uri.paypal.com/services/subscriptions/confirm-payment https://uri.paypal.com/services/payments/client-payments-eligibility https://api.paypal.com/v1/vault/credit-card https://api.paypal.com/v1/payments/.* https://uri.paypal.com/services/applications/webhooks https://uri.paypal.com/services/pricing/exchange-currency/read https://uri.paypal.com/services/credit/client-offer-presentment/read https://uri.paypal.com/services/disputes/update-seller https://uri.paypal.com/services/payments/payment/authcapture openid https://uri.paypal.com/services/disputes/read-seller https://uri.paypal.com/services/payments/orders/client_sdk_orders_api https://uri.paypal.com/services/payments/refund https://uri.paypal.com/services/disputes/create https://uri.paypal.com/services/pricing/quote-exchange-rates/read https://uri.paypal.com/services/documents/disputes/download https://uri.paypal.com/services/billing-agreements https://uri.paypal.com/services/checkout/payment-resources https://uri.paypal.com/payments/payouts https://api.paypal.com/v1/vault/credit-card/.* https://uri.paypal.com/services/shipping/trackers/readwrite https://uri.paypal.com/services/subscriptions",
+  "access_token": "[REDACTED]",
+  "token_type": "Bearer",
+  "app_id": "APP-0XS15166W95391723",
+  "expires_in": 32391,
+  "nonce": "2026-11-12T18:36:39ZbZEzSWtQRNkunhFJPb3CVWacZKCtinKO0_ypmjWhfbE"
+}
+```
+
+</details>
+
+### S1 · create order (payer approval) · 2026-11-12 18:36:49Z
+
+`POST /v2/checkout/orders` → **200** · debug id `f6193946213cc`
+
+<details><summary>request / response (redacted)</summary>
+
+```json
+{
+  "headers": {
+    "Authorization": "[REDACTED]",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation",
+    "PayPal-Request-Id": "spike_s1_create_1794508606"
+  },
+  "body": {
+    "intent": "CAPTURE",
+    "purchase_units": [
+      {
+        "reference_id": "pi_spike_s1",
+        "custom_id": "pi_spike_s1",
+        "amount": {
+          "currency_code": "USD",
+          "value": "32.00"
+        }
+      }
+    ],
+    "payment_source": {
+      "paypal": {
+        "experience_context": {
+          "brand_name": "Kettle & Crumb (sandbox)",
+          "shipping_preference": "NO_SHIPPING",
+          "user_action": "PAY_NOW",
+          "return_url": "http://localhost:8100/paypal/return",
+          "cancel_url": "http://localhost:8100/paypal/return?cancel=1"
+        }
+      }
+    }
+  }
+}
+```
+
+```json
+{
+  "id": "6VX14008JC947302G",
+  "intent": "CAPTURE",
+  "status": "PAYER_ACTION_REQUIRED",
+  "payment_source": {
+    "paypal": {}
+  },
+  "purchase_units": [
+    {
+      "reference_id": "pi_spike_s1",
+      "amount": {
+        "currency_code": "USD",
+        "value": "32.00"
+      },
+      "payee": {
+        "email_address": "sb-uctej53876657@business.example.com",
+        "merchant_id": "6RBCNPTNEGQXS",
+        "display_data": {
+          "brand_name": "Kettle & Crumb (sandbox)"
+        }
+      },
+      "custom_id": "pi_spike_s1"
+    }
+  ],
+  "links": [
+    {
+      "href": "https://api.sandbox.paypal.com/v2/checkout/orders/6VX14008JC947302G",
+      "rel": "self",
+      "method": "GET"
+    },
+    {
+      "href": "https://www.sandbox.paypal.com/checkoutnow?token=6VX14008JC947302G",
+      "rel": "payer-action",
+      "method": "GET"
+    }
+  ]
+}
+```
+
+</details>
+
+### S3 · OAuth token · 2026-11-12 18:36:55Z
+
+`POST /v1/oauth2/token` → **200** · debug id `f247597cd0cbd`
+
+<details><summary>request / response (redacted)</summary>
+
+```json
+{
+  "headers": {
+    "Authorization": "[REDACTED]"
+  },
+  "body": {
+    "grant_type": "client_credentials"
+  }
+}
+```
+
+```json
+{
+  "scope": "https://uri.paypal.com/services/checkout/one-click-with-merchant-issued-token https://uri.paypal.com/services/payments/futurepayments https://uri.paypal.com/services/disputes/read-buyer https://uri.paypal.com/services/payments/realtimepayment https://uri.paypal.com/services/subscriptions/confirm-payment https://uri.paypal.com/services/payments/client-payments-eligibility https://api.paypal.com/v1/vault/credit-card https://api.paypal.com/v1/payments/.* https://uri.paypal.com/services/applications/webhooks https://uri.paypal.com/services/pricing/exchange-currency/read https://uri.paypal.com/services/credit/client-offer-presentment/read https://uri.paypal.com/services/disputes/update-seller https://uri.paypal.com/services/payments/payment/authcapture openid https://uri.paypal.com/services/disputes/read-seller https://uri.paypal.com/services/payments/orders/client_sdk_orders_api https://uri.paypal.com/services/payments/refund https://uri.paypal.com/services/disputes/create https://uri.paypal.com/services/pricing/quote-exchange-rates/read https://uri.paypal.com/services/documents/disputes/download https://uri.paypal.com/services/billing-agreements https://uri.paypal.com/services/checkout/payment-resources https://uri.paypal.com/payments/payouts https://api.paypal.com/v1/vault/credit-card/.* https://uri.paypal.com/services/shipping/trackers/readwrite https://uri.paypal.com/services/subscriptions",
+  "access_token": "[REDACTED]",
+  "token_type": "Bearer",
+  "app_id": "APP-0XS15166W95391723",
+  "expires_in": 32384,
+  "nonce": "2026-11-12T18:36:39ZbZEzSWtQRNkunhFJPb3CVWacZKCtinKO0_ypmjWhfbE"
+}
+```
+
+</details>
+
+### S3 · setup token (card card-if) · 2026-11-12 18:36:56Z
+
+`POST /v3/vault/setup-tokens` → **403** · debug id `f443778a3c836`
+
+<details><summary>request / response (redacted)</summary>
+
+```json
+{
+  "headers": {
+    "Authorization": "[REDACTED]",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation",
+    "PayPal-Request-Id": "spike_s3_setup_card-if_1794508614"
+  },
+  "body": {
+    "payment_source": {
+      "card": {
+        "number": "4012********1881",
+        "expiry": "2030-12",
+        "security_code": "[REDACTED]",
+        "name": "CCREJECT-IF",
+        "experience_context": {
+          "return_url": "http://localhost:8100/paypal/return?vault=card",
+          "cancel_url": "http://localhost:8100/paypal/return?vault=card&cancel=1"
+        }
+      }
+    }
+  }
+}
+```
+
+```json
+{
+  "name": "NOT_AUTHORIZED",
+  "debug_id": "f443778a3c836",
+  "message": "Authorization failed due to insufficient permissions.",
+  "details": [
+    {
+      "issue": "NOT_AUTHORIZED",
+      "description": "Authorization failed due to insufficient permissions."
+    }
+  ]
+}
+```
+
+</details>
+
+> **S3** — FAIL setup token card-if: HTTP 403
+
+### S3 · setup token (card card-sf) · 2026-11-12 18:36:57Z
+
+`POST /v3/vault/setup-tokens` → **403** · debug id `f6914663309bf`
+
+<details><summary>request / response (redacted)</summary>
+
+```json
+{
+  "headers": {
+    "Authorization": "[REDACTED]",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation",
+    "PayPal-Request-Id": "spike_s3_setup_card-sf_1794508616"
+  },
+  "body": {
+    "payment_source": {
+      "card": {
+        "number": "4012********1881",
+        "expiry": "2030-12",
+        "security_code": "[REDACTED]",
+        "name": "CCREJECT-SF",
+        "experience_context": {
+          "return_url": "http://localhost:8100/paypal/return?vault=card",
+          "cancel_url": "http://localhost:8100/paypal/return?vault=card&cancel=1"
+        }
+      }
+    }
+  }
+}
+```
+
+```json
+{
+  "name": "NOT_AUTHORIZED",
+  "debug_id": "f6914663309bf",
+  "message": "Authorization failed due to insufficient permissions.",
+  "details": [
+    {
+      "issue": "NOT_AUTHORIZED",
+      "description": "Authorization failed due to insufficient permissions."
+    }
+  ]
+}
+```
+
+</details>
+
+> **S3** — FAIL setup token card-sf: HTTP 403
+
+### S3 · setup token (card card-refused) · 2026-11-12 18:36:58Z
+
+`POST /v3/vault/setup-tokens` → **403** · debug id `f691466da1b41`
+
+<details><summary>request / response (redacted)</summary>
+
+```json
+{
+  "headers": {
+    "Authorization": "[REDACTED]",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation",
+    "PayPal-Request-Id": "spike_s3_setup_card-refused_1794508617"
+  },
+  "body": {
+    "payment_source": {
+      "card": {
+        "number": "4012********1881",
+        "expiry": "2030-12",
+        "security_code": "[REDACTED]",
+        "name": "CCREJECT-REFUSED",
+        "experience_context": {
+          "return_url": "http://localhost:8100/paypal/return?vault=card",
+          "cancel_url": "http://localhost:8100/paypal/return?vault=card&cancel=1"
+        }
+      }
+    }
+  }
+}
+```
+
+```json
+{
+  "name": "NOT_AUTHORIZED",
+  "debug_id": "f691466da1b41",
+  "message": "Authorization failed due to insufficient permissions.",
+  "details": [
+    {
+      "issue": "NOT_AUTHORIZED",
+      "description": "Authorization failed due to insufficient permissions."
+    }
+  ]
+}
+```
+
+</details>
+
+> **S3** — FAIL setup token card-refused: HTTP 403
+
+### S3 · setup token (card card-ec) · 2026-11-12 18:36:59Z
+
+`POST /v3/vault/setup-tokens` → **403** · debug id `f679861afc9ae`
+
+<details><summary>request / response (redacted)</summary>
+
+```json
+{
+  "headers": {
+    "Authorization": "[REDACTED]",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation",
+    "PayPal-Request-Id": "spike_s3_setup_card-ec_1794508618"
+  },
+  "body": {
+    "payment_source": {
+      "card": {
+        "number": "4012********1881",
+        "expiry": "2030-12",
+        "security_code": "[REDACTED]",
+        "name": "CCREJECT-EC",
+        "experience_context": {
+          "return_url": "http://localhost:8100/paypal/return?vault=card",
+          "cancel_url": "http://localhost:8100/paypal/return?vault=card&cancel=1"
+        }
+      }
+    }
+  }
+}
+```
+
+```json
+{
+  "name": "NOT_AUTHORIZED",
+  "debug_id": "f679861afc9ae",
+  "message": "Authorization failed due to insufficient permissions.",
+  "details": [
+    {
+      "issue": "NOT_AUTHORIZED",
+      "description": "Authorization failed due to insufficient permissions."
+    }
+  ]
+}
+```
+
+</details>
+
+> **S3** — FAIL setup token card-ec: HTTP 403
+
+### S3 · setup token (card card-clean) · 2026-11-12 18:37:00Z
+
+`POST /v3/vault/setup-tokens` → **403** · debug id `f704261e9e032`
+
+<details><summary>request / response (redacted)</summary>
+
+```json
+{
+  "headers": {
+    "Authorization": "[REDACTED]",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation",
+    "PayPal-Request-Id": "spike_s3_setup_card-clean_1794508619"
+  },
+  "body": {
+    "payment_source": {
+      "card": {
+        "number": "4012********1881",
+        "expiry": "2030-12",
+        "security_code": "[REDACTED]",
+        "name": "Maya Sandbox",
+        "experience_context": {
+          "return_url": "http://localhost:8100/paypal/return?vault=card",
+          "cancel_url": "http://localhost:8100/paypal/return?vault=card&cancel=1"
+        }
+      }
+    }
+  }
+}
+```
+
+```json
+{
+  "name": "NOT_AUTHORIZED",
+  "debug_id": "f704261e9e032",
+  "message": "Authorization failed due to insufficient permissions.",
+  "details": [
+    {
+      "issue": "NOT_AUTHORIZED",
+      "description": "Authorization failed due to insufficient permissions."
+    }
+  ]
+}
+```
+
+</details>
+
+> **S3** — FAIL setup token card-clean: HTTP 403
+
+### S2 · OAuth token · 2026-11-12 18:37:19Z
+
+`POST /v1/oauth2/token` → **200** · debug id `f5141232d629c`
+
+<details><summary>request / response (redacted)</summary>
+
+```json
+{
+  "headers": {
+    "Authorization": "[REDACTED]"
+  },
+  "body": {
+    "grant_type": "client_credentials"
+  }
+}
+```
+
+```json
+{
+  "scope": "https://uri.paypal.com/services/checkout/one-click-with-merchant-issued-token https://uri.paypal.com/services/payments/futurepayments https://uri.paypal.com/services/disputes/read-buyer https://uri.paypal.com/services/payments/realtimepayment https://uri.paypal.com/services/subscriptions/confirm-payment https://uri.paypal.com/services/payments/client-payments-eligibility https://api.paypal.com/v1/vault/credit-card https://api.paypal.com/v1/payments/.* https://uri.paypal.com/services/applications/webhooks https://uri.paypal.com/services/pricing/exchange-currency/read https://uri.paypal.com/services/credit/client-offer-presentment/read https://uri.paypal.com/services/disputes/update-seller https://uri.paypal.com/services/payments/payment/authcapture openid https://uri.paypal.com/services/disputes/read-seller https://uri.paypal.com/services/payments/orders/client_sdk_orders_api https://uri.paypal.com/services/payments/refund https://uri.paypal.com/services/disputes/create https://uri.paypal.com/services/pricing/quote-exchange-rates/read https://uri.paypal.com/services/documents/disputes/download https://uri.paypal.com/services/billing-agreements https://uri.paypal.com/services/checkout/payment-resources https://uri.paypal.com/payments/payouts https://api.paypal.com/v1/vault/credit-card/.* https://uri.paypal.com/services/shipping/trackers/readwrite https://uri.paypal.com/services/subscriptions",
+  "access_token": "[REDACTED]",
+  "token_type": "Bearer",
+  "app_id": "APP-0XS15166W95391723",
+  "expires_in": 32360,
+  "nonce": "2026-11-12T18:36:39ZbZEzSWtQRNkunhFJPb3CVWacZKCtinKO0_ypmjWhfbE"
+}
+```
+
+</details>
+
+### S2 · setup token (paypal, IMMEDIATE) · 2026-11-12 18:37:20Z
+
+`POST /v3/vault/setup-tokens` → **403** · debug id `f7083825e4d26`
+
+<details><summary>request / response (redacted)</summary>
+
+```json
+{
+  "headers": {
+    "Authorization": "[REDACTED]",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation",
+    "PayPal-Request-Id": "spike_s2_setup_IMMEDIATE_1794508638"
+  },
+  "body": {
+    "payment_source": {
+      "paypal": {
+        "description": "Kettle & Crumb \u2014 let your agent pay with PayPal (sandbox)",
+        "usage_type": "MERCHANT",
+        "usage_pattern": "IMMEDIATE",
+        "customer_type": "CONSUMER",
+        "permit_multiple_payment_tokens": true,
+        "experience_context": {
+          "brand_name": "Kettle & Crumb (sandbox)",
+          "shipping_preference": "NO_SHIPPING",
+          "return_url": "http://localhost:8100/paypal/return?vault=1",
+          "cancel_url": "http://localhost:8100/paypal/return?vault=1&cancel=1"
+        }
+      }
+    }
+  }
+}
+```
+
+```json
+{
+  "name": "NOT_AUTHORIZED",
+  "debug_id": "f7083825e4d26",
+  "message": "Authorization failed due to insufficient permissions.",
+  "details": [
+    {
+      "issue": "NOT_AUTHORIZED",
+      "description": "Authorization failed due to insufficient permissions."
+    }
+  ]
+}
+```
+
+</details>
+
+> **S2** — FAIL setup token with usage_pattern=IMMEDIATE: HTTP 403
+
+### S1 · OAuth token · 2026-11-12 18:46:40Z
+
+`POST /v1/oauth2/token` → **200** · debug id `f1322239944ea`
+
+<details><summary>request / response (redacted)</summary>
+
+```json
+{
+  "headers": {
+    "Authorization": "[REDACTED]"
+  },
+  "body": {
+    "grant_type": "client_credentials"
+  }
+}
+```
+
+```json
+{
+  "scope": "https://uri.paypal.com/services/checkout/one-click-with-merchant-issued-token https://uri.paypal.com/services/payments/futurepayments https://uri.paypal.com/services/disputes/read-buyer https://uri.paypal.com/services/payments/realtimepayment https://uri.paypal.com/services/subscriptions/confirm-payment https://uri.paypal.com/services/payments/client-payments-eligibility https://api.paypal.com/v1/vault/credit-card https://api.paypal.com/v1/payments/.* https://uri.paypal.com/services/applications/webhooks https://uri.paypal.com/services/pricing/exchange-currency/read https://uri.paypal.com/services/credit/client-offer-presentment/read https://uri.paypal.com/services/disputes/update-seller https://uri.paypal.com/services/payments/payment/authcapture openid https://uri.paypal.com/services/disputes/read-seller https://uri.paypal.com/services/payments/orders/client_sdk_orders_api https://uri.paypal.com/services/payments/refund https://uri.paypal.com/services/disputes/create https://uri.paypal.com/services/pricing/quote-exchange-rates/read https://uri.paypal.com/services/documents/disputes/download https://uri.paypal.com/services/billing-agreements https://uri.paypal.com/services/checkout/payment-resources https://uri.paypal.com/payments/payouts https://api.paypal.com/v1/vault/credit-card/.* https://uri.paypal.com/services/shipping/trackers/readwrite https://uri.paypal.com/services/subscriptions",
+  "access_token": "[REDACTED]",
+  "token_type": "Bearer",
+  "app_id": "APP-0XS15166W95391723",
+  "expires_in": 31800,
+  "nonce": "2026-11-12T18:36:39ZbZEzSWtQRNkunhFJPb3CVWacZKCtinKO0_ypmjWhfbE"
+}
+```
+
+</details>
+
+### S1 · capture order · 2026-11-12 18:46:41Z
+
+`POST /v2/checkout/orders/6VX14008JC947302G/capture` → **201** · debug id `f132223645325`
+
+<details><summary>request / response (redacted)</summary>
+
+```json
+{
+  "headers": {
+    "Authorization": "[REDACTED]",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation",
+    "PayPal-Request-Id": "spike_s1_capture_6VX14008JC947302G"
+  },
+  "body": {}
+}
+```
+
+```json
+{
+  "id": "6VX14008JC947302G",
+  "intent": "CAPTURE",
+  "status": "COMPLETED",
+  "payment_source": {
+    "paypal": {
+      "email_address": "sb-7e4qb53889901@personal.example.com",
+      "account_id": "DRQ9HLEXXLHBU",
+      "account_status": "VERIFIED",
+      "name": {
+        "given_name": "John",
+        "surname": "Doe"
+      },
+      "address": {
+        "country_code": "US"
+      }
+    }
+  },
+  "purchase_units": [
+    {
+      "reference_id": "pi_spike_s1",
+      "amount": {
+        "currency_code": "USD",
+        "value": "32.00"
+      },
+      "payee": {
+        "email_address": "sb-uctej53876657@business.example.com",
+        "merchant_id": "6RBCNPTNEGQXS",
+        "display_data": {
+          "brand_name": "Kettle & Crumb (sandbox)"
+        }
+      },
+      "custom_id": "pi_spike_s1",
+      "payments": {
+        "captures": [
+          {
+            "id": "4UG61505X30485236",
+            "status": "COMPLETED",
+            "amount": {
+              "currency_code": "USD",
+              "value": "32.00"
+            },
+            "final_capture": true,
+            "seller_protection": {
+              "status": "ELIGIBLE",
+              "dispute_categories": [
+                "ITEM_NOT_RECEIVED",
+                "UNAUTHORIZED_TRANSACTION"
+              ]
+            },
+            "seller_receivable_breakdown": {
+              "gross_amount": {
+                "currency_code": "USD",
+                "value": "32.00"
+              },
+              "paypal_fee": {
+                "currency_code": "USD",
+                "value": "1.83"
+              },
+              "net_amount": {
+                "currency_code": "USD",
+                "value": "30.17"
+              }
+            },
+            "custom_id": "pi_spike_s1",
+            "links": [
+              {
+                "href": "https://api.sandbox.paypal.com/v2/payments/captures/4UG61505X30485236",
+                "rel": "self",
+                "method": "GET"
+              },
+              {
+                "href": "https://api.sandbox.paypal.com/v2/payments/captures/4UG61505X30485236/refund",
+                "rel": "refund",
+                "method": "POST"
+              },
+              {
+                "href": "https://api.sandbox.paypal.com/v2/checkout/orders/6VX14008JC947302G",
+                "rel": "up",
+                "method": "GET"
+              }
+            ],
+            "create_time": "2026-11-12T18:46:40Z",
+            "update_time": "2026-11-12T18:46:40Z"
+          }
+        ]
+      }
+    }
+  ],
+  "payer": {
+    "name": {
+      "given_name": "John",
+      "surname": "Doe"
+    },
+    "email_address": "sb-7e4qb53889901@personal.example.com",
+    "payer_id": "DRQ9HLEXXLHBU",
+    "address": {
+      "country_code": "US"
+    }
+  },
+  "create_time": "2026-11-12T18:36:49Z",
+  "update_time": "2026-11-12T18:46:40Z",
+  "links": [
+    {
+      "href": "https://api.sandbox.paypal.com/v2/checkout/orders/6VX14008JC947302G",
+      "rel": "self",
+      "method": "GET"
+    }
+  ]
+}
+```
+
+</details>
+
+> **S1** — PASS capture: {'order_id': '6VX14008JC947302G', 'order_status': 'COMPLETED', 'capture_id': '4UG61505X30485236', 'capture_status': 'COMPLETED', 'processor_response': None, 'issue': None}
+
+### S2 · OAuth token · 2026-11-12 18:46:49Z
+
+`POST /v1/oauth2/token` → **200** · debug id `ca597b39f3aa8`
+
+<details><summary>request / response (redacted)</summary>
+
+```json
+{
+  "headers": {
+    "Authorization": "[REDACTED]"
+  },
+  "body": {
+    "grant_type": "client_credentials"
+  }
+}
+```
+
+```json
+{
+  "scope": "https://uri.paypal.com/services/checkout/one-click-with-merchant-issued-token https://uri.paypal.com/services/payments/futurepayments https://uri.paypal.com/services/disputes/read-buyer https://uri.paypal.com/services/payments/realtimepayment https://uri.paypal.com/services/subscriptions/confirm-payment https://uri.paypal.com/services/payments/client-payments-eligibility https://api.paypal.com/v1/vault/credit-card https://api.paypal.com/v1/payments/.* https://uri.paypal.com/services/applications/webhooks https://uri.paypal.com/services/pricing/exchange-currency/read https://uri.paypal.com/services/credit/client-offer-presentment/read https://uri.paypal.com/services/disputes/update-seller https://uri.paypal.com/services/payments/payment/authcapture openid https://uri.paypal.com/services/disputes/read-seller https://uri.paypal.com/services/payments/orders/client_sdk_orders_api https://uri.paypal.com/services/payments/refund https://uri.paypal.com/services/disputes/create https://uri.paypal.com/services/pricing/quote-exchange-rates/read https://uri.paypal.com/services/documents/disputes/download https://uri.paypal.com/services/billing-agreements https://uri.paypal.com/services/checkout/payment-resources https://uri.paypal.com/payments/payouts https://api.paypal.com/v1/vault/credit-card/.* https://uri.paypal.com/services/shipping/trackers/readwrite https://uri.paypal.com/services/subscriptions",
+  "access_token": "[REDACTED]",
+  "token_type": "Bearer",
+  "app_id": "APP-0XS15166W95391723",
+  "expires_in": 31790,
+  "nonce": "2026-11-12T18:36:39ZbZEzSWtQRNkunhFJPb3CVWacZKCtinKO0_ypmjWhfbE"
+}
+```
+
+</details>
+
+### S2 · setup token (paypal, IMMEDIATE) · 2026-11-12 18:46:50Z
+
+`POST /v3/vault/setup-tokens` → **403** · debug id `ca597b3a19c77`
+
+<details><summary>request / response (redacted)</summary>
+
+```json
+{
+  "headers": {
+    "Authorization": "[REDACTED]",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation",
+    "PayPal-Request-Id": "spike_s2_setup_IMMEDIATE_1794509206"
+  },
+  "body": {
+    "payment_source": {
+      "paypal": {
+        "description": "Kettle & Crumb \u2014 let your agent pay with PayPal (sandbox)",
+        "usage_type": "MERCHANT",
+        "usage_pattern": "IMMEDIATE",
+        "customer_type": "CONSUMER",
+        "permit_multiple_payment_tokens": true,
+        "experience_context": {
+          "brand_name": "Kettle & Crumb (sandbox)",
+          "shipping_preference": "NO_SHIPPING",
+          "return_url": "http://localhost:8100/paypal/return?vault=1",
+          "cancel_url": "http://localhost:8100/paypal/return?vault=1&cancel=1"
+        }
+      }
+    }
+  }
+}
+```
+
+```json
+{
+  "name": "NOT_AUTHORIZED",
+  "debug_id": "ca597b3a19c77",
+  "message": "Authorization failed due to insufficient permissions.",
+  "details": [
+    {
+      "issue": "NOT_AUTHORIZED",
+      "description": "Authorization failed due to insufficient permissions."
+    }
+  ]
+}
+```
+
+</details>
+
+> **S2** — FAIL setup token with usage_pattern=IMMEDIATE: HTTP 403
+
+### S2 · OAuth token · 2026-11-12 18:47:24Z
+
+`POST /v1/oauth2/token` → **200** · debug id `ca597b472bde5`
+
+<details><summary>request / response (redacted)</summary>
+
+```json
+{
+  "headers": {
+    "Authorization": "[REDACTED]"
+  },
+  "body": {
+    "grant_type": "client_credentials"
+  }
+}
+```
+
+```json
+{
+  "scope": "https://uri.paypal.com/services/checkout/one-click-with-merchant-issued-token https://uri.paypal.com/services/payments/futurepayments https://uri.paypal.com/services/disputes/read-buyer https://uri.paypal.com/services/payments/realtimepayment https://uri.paypal.com/services/subscriptions/confirm-payment https://uri.paypal.com/services/payments/client-payments-eligibility https://api.paypal.com/v1/vault/credit-card https://api.paypal.com/v1/payments/.* https://uri.paypal.com/services/applications/webhooks https://uri.paypal.com/services/pricing/exchange-currency/read https://uri.paypal.com/services/credit/client-offer-presentment/read https://uri.paypal.com/services/disputes/update-seller https://uri.paypal.com/services/payments/payment/authcapture openid https://uri.paypal.com/services/disputes/read-seller https://uri.paypal.com/services/payments/orders/client_sdk_orders_api https://uri.paypal.com/services/payments/refund https://uri.paypal.com/services/disputes/create https://uri.paypal.com/services/pricing/quote-exchange-rates/read https://uri.paypal.com/services/documents/disputes/download https://uri.paypal.com/services/billing-agreements https://uri.paypal.com/services/checkout/payment-resources https://uri.paypal.com/payments/payouts https://api.paypal.com/v1/vault/credit-card/.* https://uri.paypal.com/services/shipping/trackers/readwrite https://uri.paypal.com/services/subscriptions",
+  "access_token": "[REDACTED]",
+  "token_type": "Bearer",
+  "app_id": "APP-0XS15166W95391723",
+  "expires_in": 31755,
+  "nonce": "2026-11-12T18:36:39ZbZEzSWtQRNkunhFJPb3CVWacZKCtinKO0_ypmjWhfbE"
+}
+```
+
+</details>
+
+### S2 · setup token (paypal, IMMEDIATE) · 2026-11-12 18:47:24Z
+
+`POST /v3/vault/setup-tokens` → **403** · debug id `ca597b4794872`
+
+<details><summary>request / response (redacted)</summary>
+
+```json
+{
+  "headers": {
+    "Authorization": "[REDACTED]",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation",
+    "PayPal-Request-Id": "spike_s2_setup_IMMEDIATE_1794509243"
+  },
+  "body": {
+    "payment_source": {
+      "paypal": {
+        "description": "Kettle & Crumb \u2014 let your agent pay with PayPal (sandbox)",
+        "usage_type": "MERCHANT",
+        "usage_pattern": "IMMEDIATE",
+        "customer_type": "CONSUMER",
+        "permit_multiple_payment_tokens": true,
+        "experience_context": {
+          "brand_name": "Kettle & Crumb (sandbox)",
+          "shipping_preference": "NO_SHIPPING",
+          "return_url": "http://localhost:8100/paypal/return?vault=1",
+          "cancel_url": "http://localhost:8100/paypal/return?vault=1&cancel=1"
+        }
+      }
+    }
+  }
+}
+```
+
+```json
+{
+  "name": "NOT_AUTHORIZED",
+  "debug_id": "ca597b4794872",
+  "message": "Authorization failed due to insufficient permissions.",
+  "details": [
+    {
+      "issue": "NOT_AUTHORIZED",
+      "description": "Authorization failed due to insufficient permissions."
+    }
+  ]
+}
+```
+
+</details>
+
+> **S2** — FAIL setup token with usage_pattern=IMMEDIATE: HTTP 403

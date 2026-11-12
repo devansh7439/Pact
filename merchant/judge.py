@@ -22,7 +22,7 @@ import httpx
 
 from merchant.catalog import CATALOG
 from merchant.console import linked_merchant_side
-from merchant.db import audit, get_control, now_iso
+from merchant.db import audit, get_control, now_iso, set_control
 from merchant.paypal.fixture import FixturePayPal
 from merchant.service import MerchantService
 
@@ -133,10 +133,21 @@ class Judge:
         return {"ok": True, "buyer_reset": buyer_reset}
 
     def run(self, scenario: str) -> dict[str, Any]:
+        """Run one scenario. Its intents are exempt from the live holdout while it runs."""
         self._require_judge_mode()
         spec = SCENARIOS.get(scenario)
         if spec is None:
             raise JudgeError(404, f"unknown scenario {scenario}; S5 runs on the buyer side")
+        customer = ARJUN if spec["channel"] == "human" else self._maya()["customer_id"]
+        with self.svc.db.tx() as conn:
+            set_control(conn, "judge_scripted_customer", customer)
+        try:
+            return self._run(scenario, spec)
+        finally:
+            with self.svc.db.tx() as conn:
+                set_control(conn, "judge_scripted_customer", "")
+
+    def _run(self, scenario: str, spec: dict[str, Any]) -> dict[str, Any]:
         item = CATALOG[spec["sku"]]
         tag = f"{scenario}_{now_iso().replace(':', '')}"
         if spec["channel"] == "human":

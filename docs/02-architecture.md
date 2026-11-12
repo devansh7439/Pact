@@ -146,9 +146,13 @@ processor is rewritten against PayPal.
 ### Port status (v0.3, 2026-11-12)
 
 
-| Done — in `merchant/`, tests green | Waiting on the spike / new DB |
+| Done — in `merchant/`, tests green | Still to do |
 |---|---|
-| `engine/taxonomy.py` (rewritten for PayPal), `economics.py`, `policy.py`, `controls.py`, `provenance.py`, `diagnosis.py`, `evaluate.py`; `engine/holdout.py` (new); `integrations/llm.py`; `ml/`; `simulator/`; `shared/money.py` | `paypal/` client, `executor.py`, `verification.py`, `reconciler.py`, `verify_live.py` (need spike fixtures); `db.py` (doc 07 schema); `bandit.py`, `learning.py` (read the DB); pipeline and `app.py`; frontend |
+| Ported: `engine/taxonomy.py` (rewritten for PayPal), `economics.py`, `policy.py`, `controls.py`, `provenance.py`, `diagnosis.py`, `evaluate.py`, `integrations/llm.py`, `ml/`, `simulator/`. New: `engine/holdout.py`, `db.py` (doc 07 schema, append-only audit enforced by triggers), `paypal/` (live client + offline fixture), `engine/executor.py`, `engine/pipeline.py`, `agent_api/offers.py`, `service.py` (agent API, onboarding, webhooks, reconciler, review queue, callbacks), `console.py`, `judge.py`, `app.py`, `scripts/seed.py` | `bandit.py`, `learning.py` (LEARN stage; cut in deadline mode); `verify_live.py` and spike-verified PayPal behaviour (needs sandbox credentials); Ask Pact assistant (P4) |
+
+Layout note: doc §3 sketched `paypal/{auth,orders,vault,webhooks}.py`; the build uses
+`paypal/client.py` (live), `paypal/fixture.py` (offline) and `paypal/types.py`, and
+`verification`/`reconciler` live in `service.py`.
 
 Fixes made while porting (each covered by a test):
 

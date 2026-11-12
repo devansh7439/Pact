@@ -109,6 +109,22 @@ def test_seed_twice_is_idempotent(judge):
     assert merchant.post("/judge/scenarios/S1/run").status_code == 200
 
 
+def test_judge_runs_are_exempt_from_the_holdout(judge):
+    """pact-f3: at HOLDOUT_RATE 0.10, ~1 in 10 S1 clicks were held out and 'failed'.
+    Scripted runs are exempt (and say so in the audit); real traffic is not."""
+    merchant, _buyer, svc = judge
+    merchant.post("/console/controls", json={"holdout_rate": "0.5"})
+    for _ in range(10):
+        r = merchant.post("/judge/scenarios/S1/run").json()
+        assert outcome(svc, r["intent_id"]) == "RECOVERED"
+        holdout_row = svc.db.one("SELECT payload_json FROM audit_trail WHERE intent_id=? AND stage='HOLDOUT'",
+                                 (r["intent_id"],))["payload_json"]
+        assert '"exempt":"judge_scripted"' in holdout_row
+        merchant.post("/judge/reset")
+    from merchant.db import get_control
+    assert get_control(svc.db, "judge_scripted_customer", "") == ""   # flag cleared after runs
+
+
 def test_judge_endpoints_are_off_outside_judge_mode(tmp_path):
     cfg = Settings(_env_file=None, merchant_db_path=tmp_path / "m.db", judge_mode=False)
     svc = MerchantService(cfg, Database(cfg.merchant_db_path), FixturePayPal())

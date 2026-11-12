@@ -44,7 +44,7 @@ class FailureDecision:
 
 class Pipeline:
     def __init__(self, db: Database, policy_fn, *, holdout_salt: str, holdout_rate_fn,
-                 kill_switch_fn, mode_fn, predict=None) -> None:
+                 kill_switch_fn, mode_fn, predict=None, holdout_exempt_fn=None) -> None:
         self.db = db
         self._policy: callable = policy_fn          # () -> MerchantPolicy (controls are live)
         self.salt = holdout_salt
@@ -52,6 +52,9 @@ class Pipeline:
         self._kill = kill_switch_fn
         self._mode = mode_fn
         self._predict = predict
+        #: intent row -> reason string when this intent must not be held out (judge-scripted
+        #: demo runs), else None. Real traffic is never exempt.
+        self._exempt = holdout_exempt_fn or (lambda intent: None)
 
     # -- context --------------------------------------------------------------
     def context(self, intent_id: str) -> RecoveryContext:
@@ -137,9 +140,12 @@ class Pipeline:
         features = self._features(intent, ctx, attempt)
         propensity, source = self._score(features)
         decision = decide(classification, intent["amount_minor"], propensity, ctx, policy)
-        decision, held = holdout.apply(decision, classification, intent_id, intent["amount_minor"],
-                                       salt=self.salt, rate=self._rate(),
-                                       autonomy_ceiling_minor=policy.max_autonomous_amount_minor)
+        exempt = self._exempt(intent)
+        held = False
+        if exempt is None:
+            decision, held = holdout.apply(decision, classification, intent_id, intent["amount_minor"],
+                                           salt=self.salt, rate=self._rate(),
+                                           autonomy_ceiling_minor=policy.max_autonomous_amount_minor)
         decision_id = new_id("dec")
 
         with self.db.tx() as conn:
@@ -161,7 +167,8 @@ class Pipeline:
                                               "rationale": decision.rationale,
                                               "options": [r.to_dict() for r in decision.options],
                                               "constraints": list(decision.constraints_applied)})
-            audit(conn, intent_id, "HOLDOUT", {"held_out": held, "rate": self._rate()})
+            audit(conn, intent_id, "HOLDOUT", {"held_out": held, "rate": self._rate(),
+                                               "exempt": exempt})
             conn.execute(
                 "INSERT INTO failures (failure_id, attempt_id, failure_class, retry_same_instrument, "
                 "diagnosed_by, confidence) VALUES (?,?,?,?,?,?)",

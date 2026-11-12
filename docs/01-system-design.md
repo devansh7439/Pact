@@ -90,7 +90,7 @@ sequenceDiagram
     Maya->>BA: "Let my agent buy from Kettle & Crumb, up to $60/week"
     BA->>BA: LLM drafts mandate → schema-validated
     BA->>M: POST /agent/v1/register (agent_id, agent Ed25519 public key, callback, draft caps)
-    M-->>BA: onboarding_url
+    M-->>BA: approval_url (merchant-hosted /onboard/{token})
     BA->>Maya: "Approve at this link"
     Maya->>M: opens onboarding page, reviews caps
     M->>PP: POST /v3/vault/setup-tokens (PayPal wallet)

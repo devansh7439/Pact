@@ -89,7 +89,7 @@ class MerchantService:
         self.pipeline = Pipeline(db, self.policy, holdout_salt=settings.holdout_salt,
                                  holdout_rate_fn=lambda: float(self.control("holdout_rate")),
                                  kill_switch_fn=self.killed, mode_fn=lambda: self.control("mode"),
-                                 predict=predict)
+                                 predict=predict, holdout_exempt_fn=self._holdout_exempt)
 
     # -- controls -------------------------------------------------------------
     def _defaults(self) -> dict[str, str]:
@@ -121,6 +121,12 @@ class MerchantService:
                 set_control(conn, k, str(v))
             audit(conn, None, "CONTROLS", {"changes": changes, "actor": actor})
         return 200, self.controls()
+
+    def _holdout_exempt(self, intent) -> str | None:
+        """Judge-scripted runs are demonstrations, not traffic: never held out."""
+        if self.s.judge_mode and get_control(self.db, "judge_scripted_customer", "") == intent["customer_id"]:
+            return "judge_scripted"
+        return None
 
     def killed(self) -> bool:
         return self.control("kill_switch") == "on"

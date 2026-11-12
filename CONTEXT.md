@@ -79,16 +79,27 @@ The local venv uses Python 3.14 and the docs target ≥ 3.11. The code avoids 3.
 - `display.text` is untrusted and never feeds a decision. The agent sees aliases, never a `vault_id`.
 - Simulated data never reaches PayPal or the LLM (`provenance.is_simulated`). Label every metric sandbox, fixture or simulated.
 
-## 6. Status and next steps
+## 6. Status and next steps (2026-11-12)
+
+Three Claude sessions coordinate through `COORDINATION.md`, which holds ownership, contracts and the log:
+- **pact-6e** owns the merchant backend and docs.
+- **pact-e4** owns the buyer agent, PRP, spike scripts and web.
+- **pact-f3** owns coordination and deploy.
+
+Initial commit `51fa513` is on origin/main (pushed by pact-e4 at the user's instruction).
 
 | Phase (doc 10) | State |
 |---|---|
-| P0 spike: PayPal sandbox scripts S1–S8, `RESULTS.md` | **Not started. Blocks the PayPal client.** Needs sandbox credentials. |
-| P1 merchant core | Engine, ML, simulator and LLM are ported with tests green. Still to do: `paypal/` client, `db.py` (doc 07), executor, verification, reconciler, pipeline, bandit/learning, `verify_live` |
-| P3 agent layer | `shared/prp` signing and models are done (parallel session). `buyer_agent` guard is in progress. Merchant `agent_api` and the offer builder (R1–R4) are not started |
-| P2/P4/P5/P6 | Console/web, Ask Pact, deploy, video: not started |
+| P0 spike | Scripts S1–S8 and the `RESULTS.md` template are written (`scripts/spike/`). **Not run: needs PayPal sandbox credentials.** |
+| P1 merchant core | Done, offline: db, PayPal client (live + fixture), executor, pipeline, holdout, outcomes, webhooks and the reconciler. Still to do: bandit/learning, `verify_live`, live verification after the spike |
+| P2 console + linked view | API done (`merchant/console.py`). `web/` has /merchant, /buyer, /judge and the linked view, /onboard (pact-e4) |
+| P3 agent layer | Done end to end: PRP signing, buyer guard and service, merchant agent API, offer builder. `tests/e2e` runs both real services |
+| P4 AI layer | LLM explanations and messages exist. **Ask Pact is not built** (unassigned) |
+| P5 deploy + judge | Judge endpoints + `scripts/seed.py` are done. Render deploy is with pact-f3. The services need fixed MERCHANT/BUYER signing keys |
+| P6 video + Devpost | Not started |
 
-Git: `origin` = github.com/devansh7439/Pact. **Nothing committed yet**, so commit and push only with the user's OK.
+Invariants (doc 08): 18 of 18 have tests.
+Run order for a demo: start merchant (:8100, JUDGE_MODE=true) and buyer (:8200), then run `python -m scripts.seed`, then open web /judge.
 
 ## 7. Known gaps
 

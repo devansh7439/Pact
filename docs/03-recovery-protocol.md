@@ -25,7 +25,7 @@ JSON Schemas: [`schemas/recovery_offer.schema.json`](../schemas/recovery_offer.s
 
 | Method & path | Purpose | Success | Notable errors |
 |---|---|---|---|
-| `POST /agent/v1/register` | Start onboarding: agent sends its public key; merchant returns its public key and a merchant-hosted approval URL | `201` | `409` agent already registered |
+| `POST /agent/v1/register` | Start onboarding: agent sends its public key; merchant returns its public key and a merchant-hosted `approval_url`. Re-registering with the same key returns the existing registration | `201` | `409` agent id already registered with a different key |
 | `POST /agent/v1/checkout` | Purchase under a registered mandate | `200` receipt, or **`402`** with a recovery offer | `403` outside registered caps, `409` duplicate idempotency key |
 | `GET  /agent/v1/offers/{offer_id}` | Fetch an offer | `200` | `404`, `410` expired |
 | `POST /agent/v1/offers/{offer_id}/accept` | Accept one option | `200` receipt, `202` pending payer action (returns `approve_url`), or `402` new offer if declined again | `409` already accepted, `410` expired, `422` invalid option/alias |

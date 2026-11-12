@@ -24,7 +24,7 @@ LINKS
 - Run it locally: the README has full setup. With no credentials you can run "python -m pytest" (220 tests), start the three services, run "python -m scripts.seed", and open http://localhost:3000/judge to trigger demo scenarios S1-S5.
 
 AI TOOLS AND HOW THEY WERE USED
-- [Model name, provider], called through an OpenAI-compatible API, turns the buyer's plain-English instructions into a structured spending mandate and drafts recovery emails. Without an API key, both fall back to templates.
+- OpenAI gpt-oss-120b, served by Groq through its OpenAI-compatible API, turns the buyer's plain-English instructions into a structured spending mandate and drafts recovery emails. Without an API key, both fall back to templates.
 - PayPal Agent Toolkit (read-only, orders.get only) powers Ask Pact, an assistant that answers merchant questions such as "why did we drop this recovery?"
 - scikit-learn: a calibrated random forest predicts how likely each recovery option is to succeed.
 - Thompson-sampling bandit: learns which recovery actions work for each kind of decline, within a profit floor.

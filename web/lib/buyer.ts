@@ -101,6 +101,7 @@ export interface Budget {
 
 export interface Health {
   agent_key_id: string;
+  agent_public_key?: string;
   llm: string;
   signing_key: string;
   paused: boolean;

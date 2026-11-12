@@ -17,6 +17,7 @@ export function Sidebar() {
   const pendingCount = queue.data?.length ?? 0;
   const isOnline = Boolean(health.data && !health.error);
   const isConnecting = !health.data && !health.error;
+  const isBuyer = pathname.startsWith("/buyer");
 
   const navItem = (label: string, path: string, badge?: string) => {
     const active = path === "/" ? pathname === "/" : pathname.startsWith(path);
@@ -195,6 +196,202 @@ export function Sidebar() {
     </aside>
   );
 
+  if (isBuyer) {
+    const bankRailsContent = (
+      <aside className="flex h-full w-60 flex-col justify-between border-r border-[#191628] bg-[#0c0b13] py-5">
+        <div className="space-y-6 px-4">
+          {/* Brand / Logo */}
+          <div className="flex items-center justify-between">
+            <Link href="/buyer" className="flex items-center gap-2.5">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#7c3aed] text-xs font-bold text-white shadow-md shadow-purple-900/40">
+                br
+              </div>
+              <span className="text-base font-bold tracking-tight text-white">BankRails</span>
+            </Link>
+            <Link
+              href="/"
+              title="Switch to Merchant Console"
+              className="rounded px-1.5 py-0.5 text-[10px] text-[#71717a] hover:bg-[#1a1728] hover:text-[#c084fc] transition-colors"
+            >
+              ← Console
+            </Link>
+          </div>
+
+          {/* Navigation */}
+          <nav className="space-y-5">
+            <div>
+              <div className="px-2 mb-2 text-[10px] font-bold uppercase tracking-wider text-[#52525b]">
+                Main
+              </div>
+              <div className="space-y-1">
+                <Link
+                  href="/buyer"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-3 rounded-xl border border-[#7c3aed]/40 bg-[#1c152e] px-3 py-2 text-xs font-semibold text-white transition-all shadow-sm"
+                >
+                  <svg className="h-4 w-4 text-[#a855f7]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                  </svg>
+                  <span>Dashboard</span>
+                </Link>
+
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    window.dispatchEvent(new CustomEvent("open-wallet-modal"));
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium text-[#71717a] hover:bg-[#151322] hover:text-[#e6edf3] transition-colors"
+                >
+                  <svg className="h-4 w-4 text-[#71717a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <path d="M6 10h12M16 14h2" />
+                  </svg>
+                  <span>Wallet</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    window.dispatchEvent(new CustomEvent("open-approvals-modal"));
+                  }}
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-medium text-[#71717a] hover:bg-[#151322] hover:text-[#e6edf3] transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <svg className="h-4 w-4 text-[#71717a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span>Approvals</span>
+                  </div>
+                  <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#7c3aed] px-1.5 text-[10px] font-bold text-white">
+                    3
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    window.dispatchEvent(new CustomEvent("open-agents-modal"));
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium text-[#71717a] hover:bg-[#151322] hover:text-[#e6edf3] transition-colors"
+                >
+                  <svg className="h-4 w-4 text-[#71717a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="10" rx="2" />
+                    <circle cx="12" cy="5" r="2" />
+                    <path d="M12 7v4" />
+                    <circle cx="8" cy="16" r="1.5" />
+                    <circle cx="16" cy="16" r="1.5" />
+                  </svg>
+                  <span>Agents</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    window.dispatchEvent(new CustomEvent("scroll-transactions"));
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium text-[#71717a] hover:bg-[#151322] hover:text-[#e6edf3] transition-colors"
+                >
+                  <svg className="h-4 w-4 text-[#71717a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  <span>Transactions</span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <div className="px-2 mb-2 text-[10px] font-bold uppercase tracking-wider text-[#52525b]">
+                Settings
+              </div>
+              <div className="space-y-1">
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    window.dispatchEvent(new CustomEvent("open-keys-modal"));
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium text-[#71717a] hover:bg-[#151322] hover:text-[#e6edf3] transition-colors"
+                >
+                  <svg className="h-4 w-4 text-[#71717a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
+                  <span>API Keys</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    window.dispatchEvent(new CustomEvent("open-rules-modal"));
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium text-[#71717a] hover:bg-[#151322] hover:text-[#e6edf3] transition-colors"
+                >
+                  <svg className="h-4 w-4 text-[#71717a]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="3" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+                  </svg>
+                  <span>Spend Rules</span>
+                </button>
+              </div>
+            </div>
+          </nav>
+        </div>
+
+        {/* Bottom Profile */}
+        <div className="px-4 pt-4 border-t border-[#191628]">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#241a3a] text-xs font-bold text-[#c084fc]">
+              JA
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-xs font-semibold text-white">jesse@r1vs.com</div>
+              <div className="text-[10px] text-[#71717a]">Admin</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    );
+
+    return (
+      <>
+        {/* Mobile Top Bar */}
+        <div className="flex items-center justify-between border-b border-[#1b1928] bg-[#0c0b13] px-4 py-3 md:hidden">
+          <Link href="/buyer" className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#7c3aed] text-xs font-bold text-white shadow-md shadow-purple-900/40">
+              br
+            </div>
+            <span className="text-base font-bold text-white">BankRails</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/" className="text-xs text-[#71717a] hover:text-white">Console</Link>
+            <button
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="rounded-lg border border-[#23272f] p-1.5 text-white"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Desktop Fixed Sidebar */}
+        <div className="hidden md:block md:w-60 md:flex-shrink-0 md:h-screen md:sticky md:top-0">
+          {bankRailsContent}
+        </div>
+
+        {/* Mobile Drawer */}
+        {mobileOpen && (
+          <div className="fixed inset-0 z-50 flex md:hidden">
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+            <div className="relative z-10 w-64">{bankRailsContent}</div>
+          </div>
+        )}
+      </>
+    );
+  }
+
   return (
     <>
       {/* Mobile Top Bar */}
@@ -232,3 +429,4 @@ export function Sidebar() {
     </>
   );
 }
+

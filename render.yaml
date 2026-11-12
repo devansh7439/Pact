@@ -1,0 +1,89 @@
+# Render Blueprint for Pact: merchant-api + buyer-agent on the free plan.
+# The web UI (web/) deploys separately to Vercel. See deploy/README.md for the full runbook.
+#
+# Free-plan facts this file is built around:
+#   - Services sleep after ~15 min idle; first request after that takes ~1 min.
+#   - The filesystem is ephemeral: SQLite DBs are empty after every wake/redeploy.
+#     JUDGE_MODE + `python -m deploy.warmup` re-seed the demo state.
+#   - 512 MB RAM. BLAS is pinned to one thread (cuts committed memory ~1.2 GB -> ~220 MB).
+#
+# Values marked `sync: false` are prompted for in the Render dashboard on first
+# Blueprint apply and are never stored in this file.
+
+services:
+  - type: web
+    name: pact-merchant
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python -m merchant.ml.train
+    # MERCHANT_PUBLIC_URL defaults to the URL Render assigns this service.
+    startCommand: MERCHANT_PUBLIC_URL="${MERCHANT_PUBLIC_URL:-$RENDER_EXTERNAL_URL}" uvicorn merchant.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: OPENBLAS_NUM_THREADS
+        value: "1"
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: MKL_NUM_THREADS
+        value: "1"
+      # Hosted demo: autonomous mode + judge endpoints + seeded human.
+      - key: JUDGE_MODE
+        value: "true"
+      - key: HOLDOUT_SALT
+        generateValue: true
+      # base64url Ed25519 private key: `python -m shared.prp.keys generate`
+      - key: MERCHANT_SIGNING_KEY
+        sync: false
+      # https://<your-vercel-app>.vercel.app  (exactly one origin; CORS + onboarding links)
+      - key: WEB_PUBLIC_URL
+        sync: false
+      # https://pact-buyer-XXXX.onrender.com  (judge mode calls the buyer's public API)
+      - key: BUYER_PUBLIC_URL
+        sync: false
+      # Optional. Blank -> fixture mode (no PayPal calls).
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      # Optional. Blank -> template messages (no LLM calls, no cost).
+      - key: LLM_BASE_URL
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        sync: false
+
+  - type: web
+    name: pact-buyer
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: BUYER_PUBLIC_URL="${BUYER_PUBLIC_URL:-$RENDER_EXTERNAL_URL}" uvicorn buyer_agent.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      # base64url Ed25519 private key: `python -m shared.prp.keys generate`.
+      # Fixed so the merchant still recognises this agent after the buyer wakes.
+      - key: BUYER_SIGNING_KEY
+        sync: false
+      # https://pact-merchant-XXXX.onrender.com
+      - key: MERCHANT_BASE_URL
+        sync: false
+      # https://<your-vercel-app>.vercel.app  (comma-separated list allowed)
+      - key: WEB_ORIGINS
+        sync: false
+      - key: LLM_BASE_URL
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        sync: false

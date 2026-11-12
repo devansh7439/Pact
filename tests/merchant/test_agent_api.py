@@ -86,6 +86,20 @@ def test_onboarding_through_the_approve_link(world):
     assert world.agent.checkout().status_code == 200          # the saved card works
 
 
+def test_same_key_reregister_returns_existing_registration(world):
+    world.onboard()
+    r = world.agent.register()
+    assert r.status_code == 201 and r.json()["registration_status"] == "ACTIVE"
+    impostor_key = keys.generate()
+    from shared.prp import signing
+    body = {"prp_version": "0.1", "agent_id": world.agent.agent_id, "agent_key_id": "agt_evil#k1",
+            "agent_public_key": keys.public_to_b64(impostor_key.public_key()),
+            "mandate": __import__("conftest").MANDATE}
+    msg = signing.sign(impostor_key, "agt_evil#k1", "POST", "/agent/v1/register", body)
+    r = world.client.post("/agent/v1/register", content=msg.body, headers=msg.headers)
+    assert r.status_code == 409                    # same agent_id, different key: refused
+
+
 def test_successful_checkout_is_a_plain_receipt(world):
     world.onboard(card_trigger=None)
     r = world.agent.checkout()
@@ -207,6 +221,19 @@ def test_single_capture_per_intent(world):
                             (offer["intent_id"],))["n"] == 1
     caps = {v.capture_id for v in world.paypal.by_request.values() if v.paid}
     assert len(caps) == 1
+
+
+def test_outcome_idempotent(world):
+    """I15: the same outcome arriving from webhook, poll and API writes one row, and
+    only the first writer triggers the measure/verify rows and the callback."""
+    offer = first_offer(world)
+    world.agent.accept(offer, "opt_alt", "paypal-wallet")          # API source wrote it
+    intent_id = offer["intent_id"]
+    assert world.svc.finalize(intent_id, "CAP_X", "webhook", "RECOVERED", None) is False
+    assert world.svc.finalize(intent_id, "CAP_Y", "poll", "LOST", None) is False
+    rows = world.svc.db.query("SELECT * FROM outcomes WHERE intent_id=?", (intent_id,))
+    assert len(rows) == 1 and rows[0]["outcome"] == "RECOVERED" and rows[0]["source"] == "api"
+    assert world.audit_stages(intent_id).count("MEASURE") == 1
 
 
 def test_audit_completeness(world):

@@ -50,6 +50,12 @@ def err(status: int, code: str, message: str = "") -> Result:
     return status, {"prp_version": "0.1", "error": {"code": code, "message": message}}
 
 
+def prp_outcome(outcome: str) -> str:
+    """Internal outcome -> PRP wire value (doc 03 §6). A first-try success is recorded
+    as PAID internally (not a recovery) and is ORGANIC on the wire: paid with no Pact action."""
+    return "ORGANIC" if outcome == "PAID" else outcome
+
+
 def _req_hash(body: Any) -> str:
     return hashlib.sha256(dumps(body).encode()).hexdigest()
 
@@ -175,7 +181,10 @@ class MerchantService:
             return err(403, "OUTSIDE_MANDATE", "mandate does not include this merchant")
         existing = self.db.one("SELECT * FROM agent_registrations WHERE agent_id=?", (agent_id,))
         if existing is not None:
-            if existing["agent_public_key"] == public_b64 and existing["status"] == "PENDING_APPROVAL":
+            # Same key that just signed this request: the agent is reconnecting (e.g. its
+            # store was wiped on a cold start). Return the registration as it stands,
+            # whatever its status. A different key for the same agent_id is still a 409.
+            if existing["agent_public_key"] == public_b64 and existing["status"] != "REVOKED":
                 return 201, self._registration_body(existing)
             return err(409, "INVALID_OPTION", "agent already registered")
         token = new_id("onb")
@@ -615,7 +624,7 @@ class MerchantService:
                 return err(404, "INVALID_OPTION", "unknown intent")
         out = self.db.one("SELECT * FROM outcomes WHERE intent_id=?", (intent_id,))
         return 200, {"prp_version": "0.1", "intent_id": intent_id, "state": intent["state"],
-                     "outcome": out["outcome"] if out else "PENDING",
+                     "outcome": prp_outcome(out["outcome"]) if out else "PENDING",
                      "amount": {"currency_code": intent["currency_code"],
                                 "value_minor": intent["amount_minor"]}}
 
@@ -742,7 +751,8 @@ class MerchantService:
         intent = self.db.one("SELECT agent_id FROM payment_intents WHERE intent_id=?", (intent_id,))
         if intent and intent["agent_id"]:
             self._post_callback(intent["agent_id"], {"prp_version": "0.1", "event": "intent.updated",
-                                                     "intent_id": intent_id, "outcome": outcome})
+                                                     "intent_id": intent_id,
+                                                     "outcome": prp_outcome(outcome)})
 
     def _post_callback(self, agent_id: str, body: dict) -> None:
         """Signed push to the agent's callback_url. Best effort: agents must also poll."""

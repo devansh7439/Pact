@@ -15,6 +15,7 @@ from merchant.db import Database
 from merchant.paypal import FixturePayPal
 from merchant.service import MerchantService
 from scripts.seed import MAYA_MANDATE, seed
+from shared.prp import keys
 
 MERCHANT = "http://merchant.test"
 
@@ -27,10 +28,13 @@ def judge(tmp_path):
                           predict=lambda events: [0.9 for _ in events])
     merchant_app = create_merchant(svc, cfg=cfg)
     to_merchant = httpx.AsyncClient(transport=httpx.ASGITransport(app=merchant_app), base_url=MERCHANT)
-    buyer = TestClient(create_buyer(db=BuyerDB(tmp_path / "b.db"), http=to_merchant))
+    buyer_key = keys.private_to_b64(keys.generate())     # fixed, like BUYER_SIGNING_KEY in prod
+    buyer = TestClient(create_buyer(db=BuyerDB(tmp_path / "b.db"), http=to_merchant,
+                                    signing_key_b64=buyer_key))
     merchant_app.state.judge.buyer = buyer
     merchant = TestClient(merchant_app)
     seed(merchant, buyer, merchant_base_url=MERCHANT)
+    merchant.buyer_key = buyer_key
     return merchant, buyer, svc
 
 
@@ -82,6 +86,27 @@ def test_reset_clears_both_sides_and_scenarios_rerun(judge):
     assert buyer.get("/buyer/purchases").json() == []
     again = merchant.post("/judge/scenarios/S1/run").json()["intent_id"]
     assert again != first and outcome(svc, again) == "RECOVERED"
+
+
+def test_reseed_after_buyer_cold_start(judge, tmp_path):
+    """Render free tier: the buyer wakes with an empty DB (same key) while the merchant
+    still has Maya ACTIVE. Seeding again must work (pact-f3's deploy blocker)."""
+    merchant, _old_buyer, svc = judge
+    assert svc.db.one("SELECT status FROM agent_registrations")["status"] == "ACTIVE"
+    to_merchant = httpx.AsyncClient(transport=httpx.ASGITransport(app=merchant.app),
+                                    base_url=MERCHANT)
+    fresh = TestClient(create_buyer(db=BuyerDB(tmp_path / "fresh.db"), http=to_merchant,
+                                    signing_key_b64=merchant.buyer_key))
+    merchant.app.state.judge.buyer = fresh
+    seed(merchant, fresh, merchant_base_url=MERCHANT)
+    r = merchant.post("/judge/scenarios/S1/run")
+    assert r.status_code == 200 and outcome(svc, r.json()["intent_id"]) == "RECOVERED"
+
+
+def test_seed_twice_is_idempotent(judge):
+    merchant, buyer, _svc = judge
+    seed(merchant, buyer, merchant_base_url=MERCHANT)       # second run must not fail
+    assert merchant.post("/judge/scenarios/S1/run").status_code == 200
 
 
 def test_judge_endpoints_are_off_outside_judge_mode(tmp_path):

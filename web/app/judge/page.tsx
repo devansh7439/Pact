@@ -32,6 +32,13 @@ export default function JudgePage() {
     setError(null);
     try {
       const r = await merchant.runScenario(id);
+      if (!r.intent_id) {
+        const why = r.result?.detail ?? r.result?.status ?? "no checkout happened";
+        const hint = why === "over_budget" || why === "OUTSIDE_MANDATE" ?" Maya's weekly budget is used up: press Reset both services and run it again." : "";
+        setError(`${id}: the buyer agent stopped before checkout (${why}).${hint}`);
+        setRunning(null);
+        return;
+      }
       router.push(`/judge/run/${r.intent_id}`);
     } catch (e) {
       setError(`${id}: ${e instanceof Error ? e.message : String(e)}`);

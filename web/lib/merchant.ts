@@ -253,7 +253,13 @@ export const merchant = {
   linked: (intentId: string) => call<Linked>(`/judge/linked/${intentId}`),
   judgeReset: () => post("/judge/reset"),
   runScenario: (s: string) =>
-    post<{ scenario: string; intent_id: string; channel: string; summary: string }>(`/judge/scenarios/${s}/run`),
+    post<{
+      scenario: string;
+      channel: string;
+      /** null when the buyer refused before checkout (e.g. OUTSIDE_MANDATE): there is no intent to show. */
+      intent_id: string | null;
+      result?: { status?: string; detail?: string | null };
+    }>(`/judge/scenarios/${s}/run`),
   onboarding: (token: string) => call<Onboarding>(`/onboard/${token}`),
   onboardVault: (token: string, alias: string) =>
     post<{ approve_url: string; setup_token: string }>(`/onboard/${token}/vault/paypal`, { alias }),

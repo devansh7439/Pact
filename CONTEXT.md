@@ -90,7 +90,7 @@ Initial commit `51fa513` is on origin/main (pushed by pact-e4 at the user's inst
 
 | Phase (doc 10) | State |
 |---|---|
-| P0 spike | S1 passed (order create and capture, 2026-11-12). S2/S3 blocked by `403 NOT_AUTHORIZED` on Vault setup tokens, likely because saving payment methods isn't enabled on the sandbox app. S4–S8 not run. See `scripts/spike/RESULTS.md`. |
+| P0 spike | S1 and S8 passed. S2: wallet setup token now 201, awaiting buyer approval. S3: cards refused with `NOT_ENABLED_TO_VAULT_PAYMENT_SOURCE`. S4–S7 not run. See `scripts/spike/RESULTS.md`. |
 | P1 merchant core | Done, offline: db, PayPal client (live + fixture), executor, pipeline, holdout, outcomes, webhooks and the reconciler. Still to do: bandit/learning, `verify_live`, live verification after the spike |
 | P2 console + linked view | API done (`merchant/console.py`). `web/` has /merchant, /buyer, /judge and the linked view, /onboard (pact-e4) |
 | P3 agent layer | Done end to end: PRP signing, buyer guard and service, merchant agent API, offer builder. `tests/e2e` runs both real services |

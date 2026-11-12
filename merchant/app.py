@@ -202,7 +202,10 @@ def create_app(service: MerchantService | None = None, *, cfg: Settings | None =
         return svc.reconcile(older_than_s=0)
 
     # -- Ask Pact assistant (doc 04 §1, doc 10 §P4) ----------------------------------------
-    assistant = AskPactAssistant(PactReadTools(svc.db, svc.paypal))
+    s = svc.s
+    creds = (s.paypal_client_id, s.paypal_client_secret) if s.paypal_live else None
+    assistant = AskPactAssistant(PactReadTools(
+        svc.db, svc.paypal, toolkit_credentials=creds, sandbox=s.paypal_env != "live"))
 
     @app.post("/assistant/ask")
     async def assistant_ask(request: Request) -> JSONResponse:

@@ -9,6 +9,7 @@ scikit-learn>=1.5
 numpy>=2.0
 pandas>=2.2
 joblib>=1.4
+paypal-agent-toolkit>=1.1.0,<2   # Ask Pact: read-only get_order_details (spike S8)
 
 # Tests
 pytest>=8.3

@@ -20,31 +20,28 @@ logger = logging.getLogger(__name__)
 class PactReadTools:
     """Read-only inspection tools for the merchant recovery engine."""
 
-    def __init__(self, db: Database, paypal_client: Any = None) -> None:
+    def __init__(
+        self,
+        db: Database,
+        paypal_client: Any = None,
+        toolkit_credentials: tuple[str, str] | None = None,
+        sandbox: bool = True,
+    ) -> None:
         self.db = db
         self.paypal = paypal_client
         self._toolkit = None
         self._toolkit_error = None
-        self._init_paypal_toolkit()
+        if toolkit_credentials:
+            self._init_paypal_toolkit(*toolkit_credentials, sandbox=sandbox)
 
-    def _init_paypal_toolkit(self) -> None:
-        """Attempt to lazily instantiate the official PayPal Agent Toolkit in read-only mode."""
+    def _init_paypal_toolkit(self, client_id: str, secret: str, sandbox: bool) -> None:
+        """Build the toolkit's framework-neutral core. Only `get_order_details` is ever called."""
         try:
-            from paypal_agent_toolkit.shared.configuration import Configuration, Context  # type: ignore
+            from paypal_agent_toolkit.shared.api import PayPalAPI  # type: ignore
+            from paypal_agent_toolkit.shared.configuration import Context  # type: ignore
 
-            cfg = Configuration(actions={"orders": {"get": True}}, context=Context(sandbox=True))
-            for mod, cls in (
-                ("paypal_agent_toolkit.openai.toolkit", "PayPalToolkit"),
-                ("paypal_agent_toolkit.langchain.toolkit", "PayPalToolkit"),
-                ("paypal_agent_toolkit.crewai.toolkit", "PayPalToolkit"),
-            ):
-                try:
-                    module = __import__(mod, fromlist=[cls])
-                    self._toolkit = getattr(module, cls)(configuration=cfg)
-                    logger.info("PayPal Agent Toolkit loaded via %s (read-only orders.get)", mod)
-                    return
-                except Exception:
-                    pass
+            self._toolkit = PayPalAPI(client_id=client_id, secret=secret, context=Context(sandbox=sandbox))
+            logger.info("PayPal Agent Toolkit loaded (read-only get_order_details)")
         except Exception as e:
             self._toolkit_error = str(e)
             logger.debug("PayPal Agent Toolkit not initialized: %s", e)
@@ -180,14 +177,12 @@ class PactReadTools:
         """Fetch PayPal Order state via official PayPal Agent Toolkit or fallback client."""
         # 1. Try PayPal Agent Toolkit if available
         if self._toolkit is not None:
-            api = getattr(self._toolkit, "_paypal_api", None) or getattr(self._toolkit, "paypal_api", None)
-            if api is not None and hasattr(api, "run"):
-                for m in ("get_order", "orders.get", "getOrder"):
-                    try:
-                        res = api.run(m, {"order_id": order_id})
-                        return {"order_id": order_id, "source": "paypal_agent_toolkit", "order": res}
-                    except Exception:
-                        pass
+            try:
+                res = json.loads(self._toolkit.run("get_order_details", {"order_id": order_id}))
+                # The toolkit's own "message" always says "captured"; report PayPal's raw order instead.
+                return {"order_id": order_id, "source": "paypal_agent_toolkit", "order": res.get("raw", res)}
+            except Exception as e:
+                logger.info("toolkit get_order_details failed for %s: %s", order_id, e)
 
         # 2. Try PayPal client direct lookup from attempt records
         att = self.db.one("SELECT * FROM attempts WHERE paypal_order_id=?", (order_id,))

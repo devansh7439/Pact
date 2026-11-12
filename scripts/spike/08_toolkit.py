@@ -1,6 +1,6 @@
 """S8 · PayPal Agent Toolkit, read-only (doc 09; doc 04 §6).
 
-    pip install paypal-agent-toolkit          # not in requirements.txt until S8 passes
+    pip install paypal-agent-toolkit          # in requirements.txt since S8 passed (2026-11-12 UTC)
     python scripts/spike/08_toolkit.py [ORDER_ID]
 
 Builds the toolkit with ONLY the orders.get action enabled, lists the tools it
@@ -30,8 +30,14 @@ def _order_id(a: list[str]) -> str | None:
 def _build_toolkit(cid: str, secret: str) -> tuple[Any, str]:
     from paypal_agent_toolkit.shared.configuration import Configuration, Context  # type: ignore
 
-    cfg = Configuration(actions={"orders": {"get": True}}, context=Context(sandbox=True))
     errors = []
+    # Framework-neutral core (1.1.0+): no OpenAI Agents / LangChain dependency.
+    try:
+        from paypal_agent_toolkit.shared.api import PayPalAPI  # type: ignore
+        return PayPalAPI(client_id=cid, secret=secret, context=Context(sandbox=True)), "paypal_agent_toolkit.shared.api.PayPalAPI"
+    except Exception as e:  # noqa: BLE001
+        errors.append(f"shared.api: {e!r}")
+    cfg = Configuration(actions={"orders": {"get": True}}, context=Context(sandbox=True))
     for mod, cls in (("paypal_agent_toolkit.openai.toolkit", "PayPalToolkit"),
                      ("paypal_agent_toolkit.langchain.toolkit", "PayPalToolkit"),
                      ("paypal_agent_toolkit.crewai.toolkit", "PayPalToolkit")):
@@ -53,10 +59,11 @@ def _tool_names(tk: Any) -> list[str]:
 
 
 def _get_order(tk: Any, order_id: str) -> Any:
-    api = getattr(tk, "_paypal_api", None) or getattr(tk, "paypal_api", None)
+    api = tk if hasattr(tk, "run") else (getattr(tk, "_paypal_api", None) or getattr(tk, "paypal_api", None))
     if api is None or not hasattr(api, "run"):
         raise RuntimeError("no _paypal_api.run on this toolkit version; call the get-order tool via your agent framework")
-    for method in ("get_order", "orders.get", "getOrder"):
+    last: Exception | None = None
+    for method in ("get_order_details", "get_order", "orders.get", "getOrder"):
         try:
             return api.run(method, {"order_id": order_id})
         except Exception as e:  # noqa: BLE001

@@ -1,23 +1,71 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useRef, useState } from "react";
 
 import { DecisionInspector } from "@/components/DecisionInspector";
-import { merchant, type Controls, type Decision, type LedgerRow, type ProvenanceMetrics } from "@/lib/merchant";
+import { merchant, type Decision, type LedgerRow, type ProvenanceMetrics } from "@/lib/merchant";
 import { fmt } from "@/lib/money";
 import { usePoll } from "@/lib/usePoll";
 
+interface KpiCardProps {
+  icon: React.ReactNode;
+  label: string;
+  tag: string;
+  value: React.ReactNode;
+  badgeText: string;
+  badgeTone?: "ok" | "bad" | "neutral";
+}
+
+function KpiCard({ icon, label, tag, value, badgeText, badgeTone = "ok" }: KpiCardProps) {
+  const badgeClasses =
+    badgeTone === "bad"
+      ? "bg-[#281618] text-[#d0545e]"
+      : badgeTone === "neutral"
+      ? "bg-[#161a22] text-[#8b949e]"
+      : "bg-[#13261c] text-[#2ebd7b]";
+
+  return (
+    <div className="rounded-2xl border border-[#1b1f24] bg-[#0d0f0e] p-5 transition-all hover:border-[#28303a]">
+      <div className="flex items-center justify-between text-xs text-[#8b949e]">
+        <div className="flex items-center gap-2">
+          {icon}
+          <span className="font-medium text-white">{label}</span>
+        </div>
+        <span className="text-[10px] uppercase font-mono text-[#6e7681]">{tag}</span>
+      </div>
+      <div className="mt-3 flex items-baseline gap-2.5">
+        <span className="text-2xl font-bold tracking-tight text-white xl:text-[26px]">
+          {value}
+        </span>
+        <span className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-semibold ${badgeClasses}`}>
+          {badgeText}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
+  const router = useRouter();
   const health = usePoll(merchant.health, 5000);
   const ledger = usePoll(merchant.ledger, 3000);
   const metrics = usePoll(merchant.metrics, 5000);
   const controls = usePoll(merchant.controls, 5000);
   const queue = usePoll(merchant.reviewQueue, 3000);
+
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
   const [selectedDecision, setSelectedDecision] = useState<Decision | null>(null);
+  const [decisionError, setDecisionError] = useState<string | null>(null);
   const [loadingDecision, setLoadingDecision] = useState(false);
-  const [selectedProvenance, setSelectedProvenance] = useState<string>("fixture");
+  const [selectedProvenance, setSelectedProvenance] = useState<string>("all");
+  const [runningS1, setRunningS1] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const activeReqRef = useRef<string | null>(null);
+
+  const isKillSwitchOn = controls.data?.kill_switch === "on";
 
   // Sum real metrics across provenances
   const totals = useMemo(() => {
@@ -39,45 +87,81 @@ export default function DashboardPage() {
     return { grossMinor: gross, causedMinor: caused, organicMinor: organic, lostMinor: lost, intents };
   }, [metrics.data]);
 
-  // Aggregate failure classes from real ledger data
-  const failureBreakdown = useMemo(() => {
+  // Filter ledger rows by selected provenance
+  const filteredLedger = useMemo(() => {
     if (!ledger.data) return [];
+    if (selectedProvenance === "all") return ledger.data;
+    return ledger.data.filter((r) => r.provenance === selectedProvenance);
+  }, [ledger.data, selectedProvenance]);
+
+  // Aggregate failure classes from filtered ledger data
+  const failureBreakdown = useMemo(() => {
     const counts: Record<string, { count: number; totalMinor: number }> = {};
-    for (const r of ledger.data) {
+    for (const r of filteredLedger) {
       const fc = r.failure_class || "UNKNOWN";
       if (!counts[fc]) counts[fc] = { count: 0, totalMinor: 0 };
       counts[fc].count += 1;
       counts[fc].totalMinor += r.amount_minor;
     }
     return Object.entries(counts).sort((a, b) => b[1].count - a[1].count);
-  }, [ledger.data]);
+  }, [filteredLedger]);
 
-  // Aggregate chosen actions from real ledger data
+  // Aggregate chosen actions from filtered ledger data
   const actionBreakdown = useMemo(() => {
-    if (!ledger.data) return [];
     const counts: Record<string, number> = {};
-    for (const r of ledger.data) {
+    for (const r of filteredLedger) {
       const act = r.chosen_action || "DROP";
       counts[act] = (counts[act] || 0) + 1;
     }
     return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  }, [ledger.data]);
+  }, [filteredLedger]);
 
-  // Load decision detail for the inspector modal
+  // Load decision detail for the inspector modal without race conditions
   const openDecision = async (id: string) => {
+    activeReqRef.current = id;
     setSelectedDecisionId(id);
+    setSelectedDecision(null);
+    setDecisionError(null);
     setLoadingDecision(true);
     try {
       const d = await merchant.decision(id);
-      setSelectedDecision(d);
-    } catch {
-      setSelectedDecision(null);
+      if (activeReqRef.current === id) {
+        setSelectedDecision(d);
+      }
+    } catch (e) {
+      if (activeReqRef.current === id) {
+        setDecisionError(e instanceof Error ? e.message : String(e));
+      }
     } finally {
-      setLoadingDecision(false);
+      if (activeReqRef.current === id) {
+        setLoadingDecision(false);
+      }
     }
   };
 
-  // Export real ledger rows to CSV
+  // Run Scenario S1 directly from Quick Actions
+  const runScenarioS1 = async () => {
+    setRunningS1(true);
+    setActionError(null);
+    try {
+      const res = await merchant.runScenario("S1");
+      if (res.intent_id) {
+        router.push(`/judge/run/${res.intent_id}`);
+      } else {
+        const detail = res.result?.detail ?? res.result?.status ?? "no checkout occurred";
+        const hint = detail === "over_budget" || detail === "OUTSIDE_MANDATE"
+          ? " (Weekly budget exhausted: press Reset in Judge Mode)"
+          : "";
+        setActionError(`Scenario S1: ${detail}${hint}`);
+      }
+    } catch (e) {
+      setActionError(`Scenario S1: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setRunningS1(false);
+    }
+  };
+
+  // Export real ledger rows to CSV using Blob and proper quoting
   const exportLedgerCSV = () => {
     if (!ledger.data || ledger.data.length === 0) return;
     const headers = [
@@ -93,36 +177,52 @@ export default function DashboardPage() {
       "Held Out",
       "Outcome",
     ];
-    const rows = ledger.data.map((r) => [
-      r.decision_id,
-      r.created_at,
-      r.intent_id,
-      r.channel,
-      r.amount_minor,
-      r.currency_code,
-      r.failure_class,
-      r.chosen_action,
-      r.nev_minor ?? "",
-      r.held_out,
-      r.outcome ?? "",
-    ]);
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      [headers.join(","), ...rows.map((row) => row.map((cell) => `"${cell}"`).join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
+
+    const escapeCsv = (val: unknown) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const lines = [
+      headers.map(escapeCsv).join(","),
+      ...ledger.data.map((r) =>
+        [
+          r.decision_id,
+          r.created_at,
+          r.intent_id,
+          r.channel,
+          r.amount_minor,
+          r.currency_code,
+          r.failure_class,
+          r.chosen_action,
+          r.nev_minor ?? "",
+          r.held_out ? "1" : "0",
+          r.outcome ?? "",
+        ]
+          .map(escapeCsv)
+          .join(",")
+      ),
+    ];
+
+    const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `pact_decisions_ledger_${Date.now()}.csv`);
+    link.href = url;
+    link.download = `pact_decisions_ledger_${Date.now()}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
-  const activeProvenanceData = metrics.data?.by_provenance?.[selectedProvenance as keyof typeof metrics.data.by_provenance];
+  const holdoutProvKey = selectedProvenance === "all" ? "fixture" : selectedProvenance;
+  const activeProvenanceData =
+    metrics.data?.by_provenance?.[holdoutProvKey as keyof typeof metrics.data.by_provenance];
 
   return (
     <div className="space-y-6">
-      {/* Top Header & Live Engine Controls */}
+      {/* Top Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2.5">
@@ -130,7 +230,7 @@ export default function DashboardPage() {
               Kettle &amp; Crumb
             </h1>
             <span className="rounded bg-[#1a231e] px-2 py-0.5 text-xs font-mono text-[#2ebd7b]">
-              PayPal {health.data?.paypal ?? "sandbox"}
+              PayPal {health.data?.paypal ?? "–"}
             </span>
           </div>
           <p className="mt-1 text-xs text-[#8b949e] md:text-sm">
@@ -138,24 +238,23 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Real Action Buttons & Kill Switch */}
         <div className="flex flex-wrap items-center gap-2.5">
           {controls.data && (
             <button
               onClick={async () => {
                 await merchant.setControls({
-                  kill_switch: controls.data?.kill_switch === "on" ? "off" : "on",
+                  kill_switch: isKillSwitchOn ? "off" : "on",
                 });
                 controls.refresh();
               }}
               className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all ${
-                controls.data.kill_switch === "on"
+                isKillSwitchOn
                   ? "bg-[#d0545e] text-white shadow-lg shadow-red-900/30"
                   : "border border-[#2ebd7b]/40 bg-[#0d0f0e] text-[#2ebd7b] hover:bg-[#13261c]"
               }`}
             >
-              <span className={`h-2 w-2 rounded-full ${controls.data.kill_switch === "on" ? "bg-white" : "bg-[#2ebd7b]"}`} />
-              <span>{controls.data.kill_switch === "on" ? "Kill switch ON" : "Kill switch: Active"}</span>
+              <span className={`h-2 w-2 rounded-full ${isKillSwitchOn ? "bg-white" : "bg-[#2ebd7b]"}`} />
+              <span>{isKillSwitchOn ? "Kill switch ON (execution blocked)" : "Kill switch OFF (normal)"}</span>
             </button>
           )}
 
@@ -175,12 +274,21 @@ export default function DashboardPage() {
             href="/judge"
             className="flex items-center gap-1.5 rounded-lg bg-[#2ebd7b] px-4 py-2 text-xs font-semibold text-[#051a10] shadow-sm transition-all hover:bg-[#28a76d]"
           >
-            Run scenarios (S1–S6) →
+            Judge scenarios (S1–S6) →
           </Link>
         </div>
       </div>
 
-      {/* Real Controls Bar */}
+      {actionError && (
+        <div className="rounded-xl border border-[#d0545e]/40 bg-[#281618] p-3 text-xs text-[#d0545e] flex items-center justify-between">
+          <span>{actionError}</span>
+          <button onClick={() => setActionError(null)} className="text-white hover:underline text-[11px]">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Engine Controls Bar */}
       {controls.data && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#1b1f24] bg-[#0d0f0e] px-4 py-3 text-xs">
           <div className="flex flex-wrap items-center gap-4 text-[#8b949e]">
@@ -217,114 +325,72 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Real KPI Cards Row (4 Metric Cards) */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Card 1: Gross Recovered */}
-        <div className="rounded-2xl border border-[#1b1f24] bg-[#0d0f0e] p-5 transition-all hover:border-[#28303a]">
-          <div className="flex items-center justify-between text-xs text-[#8b949e]">
-            <div className="flex items-center gap-2">
-              <svg className="h-4 w-4 text-[#2ebd7b]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="font-medium text-white">Gross Recovered</span>
-            </div>
-            <span className="text-[10px] uppercase font-mono text-[#6e7681]">Live</span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2.5">
-            <span className="text-2xl font-bold tracking-tight text-white xl:text-[26px]">
-              {fmt(totals.grossMinor)}
-            </span>
-            <span className="flex items-center gap-0.5 rounded bg-[#13261c] px-1.5 py-0.5 text-[11px] font-semibold text-[#2ebd7b]">
-              Caused + Organic
-            </span>
-          </div>
-        </div>
+        <KpiCard
+          icon={
+            <svg className="h-4 w-4 text-[#2ebd7b]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
+          label="Gross Recovered"
+          tag="Live"
+          value={fmt(totals.grossMinor)}
+          badgeText="Caused + Organic"
+        />
 
-        {/* Card 2: Caused Recovery (Net Lift) */}
-        <div className="rounded-2xl border border-[#1b1f24] bg-[#0d0f0e] p-5 transition-all hover:border-[#28303a]">
-          <div className="flex items-center justify-between text-xs text-[#8b949e]">
-            <div className="flex items-center gap-2">
-              <svg className="h-4 w-4 text-[#2ebd7b]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-              <span className="font-medium text-white">Caused Recovery</span>
-            </div>
-            <span className="text-[10px] uppercase font-mono text-[#6e7681]">Lift</span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2.5">
-            <span className="text-2xl font-bold tracking-tight text-white xl:text-[26px]">
-              {fmt(totals.causedMinor)}
-            </span>
-            <span className="flex items-center gap-0.5 rounded bg-[#13261c] px-1.5 py-0.5 text-[11px] font-semibold text-[#2ebd7b]">
-              Engine Lift
-            </span>
-          </div>
-        </div>
+        <KpiCard
+          icon={
+            <svg className="h-4 w-4 text-[#2ebd7b]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+          }
+          label="Caused Recovery"
+          tag="Lift"
+          value={fmt(totals.causedMinor)}
+          badgeText="Engine Lift"
+        />
 
-        {/* Card 3: Decisions Processed */}
-        <div className="rounded-2xl border border-[#1b1f24] bg-[#0d0f0e] p-5 transition-all hover:border-[#28303a]">
-          <div className="flex items-center justify-between text-xs text-[#8b949e]">
-            <div className="flex items-center gap-2">
-              <svg className="h-4 w-4 text-[#8b949e]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="font-medium text-white">Decisions Handled</span>
-            </div>
-            <span className="text-[10px] uppercase font-mono text-[#6e7681]">Audit</span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2.5">
-            <span className="text-2xl font-bold tracking-tight text-white xl:text-[26px]">
-              {ledger.data?.length ?? 0}
-            </span>
-            <span className="flex items-center gap-0.5 rounded bg-[#13261c] px-1.5 py-0.5 text-[11px] font-semibold text-[#2ebd7b]">
-              Policy Gated
-            </span>
-          </div>
-        </div>
+        <KpiCard
+          icon={
+            <svg className="h-4 w-4 text-[#8b949e]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
+          label="Decisions Handled"
+          tag="Audit"
+          value={ledger.data?.length ?? 0}
+          badgeText="Policy Gated"
+        />
 
-        {/* Card 4: Review Queue */}
-        <div className="rounded-2xl border border-[#1b1f24] bg-[#0d0f0e] p-5 transition-all hover:border-[#28303a]">
-          <div className="flex items-center justify-between text-xs text-[#8b949e]">
-            <div className="flex items-center gap-2">
-              <svg className="h-4 w-4 text-[#8b949e]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="font-medium text-white">Review Queue</span>
-            </div>
-            <span className="text-[10px] uppercase font-mono text-[#6e7681]">Human Gate</span>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2.5">
-            <span className="text-2xl font-bold tracking-tight text-white xl:text-[26px]">
-              {queue.data?.length ?? 0}
-            </span>
-            <span
-              className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-semibold ${
-                (queue.data?.length ?? 0) > 0
-                  ? "bg-[#281618] text-[#d0545e]"
-                  : "bg-[#13261c] text-[#2ebd7b]"
-              }`}
-            >
-              {(queue.data?.length ?? 0) > 0 ? "Action required" : "Queue clear"}
-            </span>
-          </div>
-        </div>
+        <KpiCard
+          icon={
+            <svg className="h-4 w-4 text-[#8b949e]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
+          label="Review Queue"
+          tag="Human Gate"
+          value={queue.data?.length ?? 0}
+          badgeText={(queue.data?.length ?? 0) > 0 ? "Action required" : "Queue clear"}
+          badgeTone={(queue.data?.length ?? 0) > 0 ? "bad" : "ok"}
+        />
       </div>
 
-      {/* Main Analytics Grid */}
+      {/* Analytics Breakdown Grid */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-        {/* Left: Failure Classes & Actions Breakdown from Real Ledger */}
         <div className="rounded-2xl border border-[#1b1f24] bg-[#0d0f0e] p-6 lg:col-span-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-sm font-semibold text-white">Decline Diagnosis &amp; Policy Actions</h2>
               <p className="mt-0.5 text-xs text-[#8b949e]">
-                Real breakdown of declines classified and actions evaluated
+                Breakdown of declines and evaluated actions ({filteredLedger.length} orders shown)
               </p>
             </div>
 
-            {/* Provenance Selector */}
+            {/* Provenance Selector Filter */}
             <div className="flex items-center gap-1 rounded-lg border border-[#23272f] bg-[#121518] p-1 text-xs">
-              {(["fixture", "sandbox", "simulated"] as const).map((prov) => (
+              {(["all", "fixture", "sandbox", "simulated"] as const).map((prov) => (
                 <button
                   key={prov}
                   onClick={() => setSelectedProvenance(prov)}
@@ -340,16 +406,16 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Failure Class Distribution */}
+          {/* Failure Class Breakdown */}
           <div className="mt-6 space-y-4">
             <div className="text-xs font-medium uppercase tracking-wider text-[#6e7681]">
-              Diagnosed Failure Classes ({failureBreakdown.length} classes detected)
+              Diagnosed Failure Classes ({failureBreakdown.length} classes in {selectedProvenance} view)
             </div>
 
             {failureBreakdown.length > 0 ? (
               <div className="space-y-3">
                 {failureBreakdown.map(([fc, stat]) => {
-                  const pct = Math.round((stat.count / (ledger.data?.length || 1)) * 100);
+                  const pct = Math.round((stat.count / (filteredLedger.length || 1)) * 100);
                   return (
                     <div key={fc} className="space-y-1.5">
                       <div className="flex items-center justify-between text-xs">
@@ -371,36 +437,40 @@ export default function DashboardPage() {
               </div>
             ) : (
               <p className="py-4 text-xs text-[#8b949e]">
-                No declines recorded yet. Run scenarios from Judge mode to generate real traffic.
+                No declines recorded under {selectedProvenance} yet.
               </p>
             )}
           </div>
 
-          {/* Chosen Actions Distribution */}
+          {/* Actions Executed */}
           <div className="mt-6 border-t border-[#1b1f24] pt-5">
             <div className="text-xs font-medium uppercase tracking-wider text-[#6e7681]">
               Engine Decisions Executed
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {actionBreakdown.map(([act, count]) => (
-                <div
-                  key={act}
-                  className="flex items-center gap-2 rounded-lg border border-[#23272f] bg-[#121518] px-3 py-1.5 text-xs"
-                >
-                  <span className="font-mono text-white">{act}</span>
-                  <span className="rounded bg-[#13261c] px-1.5 py-0.5 font-semibold text-[#2ebd7b]">
-                    {count}
-                  </span>
-                </div>
-              ))}
-            </div>
+            {actionBreakdown.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {actionBreakdown.map(([act, count]) => (
+                  <div
+                    key={act}
+                    className="flex items-center gap-2 rounded-lg border border-[#23272f] bg-[#121518] px-3 py-1.5 text-xs"
+                  >
+                    <span className="font-mono text-white">{act}</span>
+                    <span className="rounded bg-[#13261c] px-1.5 py-0.5 font-semibold text-[#2ebd7b]">
+                      {count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-[#8b949e]">No actions executed in this slice.</p>
+            )}
           </div>
 
-          {/* Provenance Holdout Note */}
+          {/* Holdout Statistics */}
           {activeProvenanceData && (
             <div className="mt-6 rounded-xl border border-[#1b1f24] bg-[#121518] p-4 text-xs">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-white uppercase">{selectedProvenance} Holdout Lift</span>
+                <span className="font-semibold text-white uppercase">{holdoutProvKey} Holdout Lift</span>
                 <span className="text-[#6e7681]">Wilson 95% Interval</span>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
@@ -429,9 +499,8 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Right Column: Review Queue & Real Actions */}
+        {/* Right Column: Review Queue & Quick Actions */}
         <div className="flex flex-col gap-5 lg:col-span-4">
-          {/* Card 1: Review Queue */}
           <div className="flex flex-col justify-between rounded-2xl border border-[#1b1f24] bg-[#0d0f0e] p-5">
             <div>
               <div className="flex items-center justify-between">
@@ -499,11 +568,11 @@ export default function DashboardPage() {
             </div>
 
             <div className="border-t border-[#181b20] pt-3 text-xs text-[#6e7681]">
-              Switch to &quot;review first&quot; mode in controls to gate all recoveries.
+              Switch policy mode to &quot;review first&quot; to gate all actions.
             </div>
           </div>
 
-          {/* Card 2: Quick Links */}
+          {/* Quick Actions Card */}
           <div className="flex flex-col justify-between rounded-2xl border border-[#1b1f24] bg-[#0d0f0e] p-5">
             <div>
               <div className="flex items-center gap-1.5 text-xs font-medium text-white">
@@ -513,25 +582,33 @@ export default function DashboardPage() {
                 <span>Quick Actions</span>
               </div>
               <div className="mt-3 space-y-2">
+                <button
+                  disabled={runningS1}
+                  onClick={runScenarioS1}
+                  className="flex w-full items-center justify-between rounded-lg border border-[#23272f] bg-[#121518] px-3 py-2 text-left text-xs text-[#8b949e] hover:border-[#2ebd7b]/40 hover:text-white disabled:opacity-50"
+                >
+                  <span>{runningS1 ? "Running S1…" : "Run S1 (Autonomous save)"}</span>
+                  <span className="text-[#2ebd7b]">▶</span>
+                </button>
                 <Link
                   href="/judge"
                   className="flex items-center justify-between rounded-lg border border-[#23272f] bg-[#121518] px-3 py-2 text-xs text-[#8b949e] hover:border-[#2ebd7b]/40 hover:text-white"
                 >
-                  <span>Run Scenario S1 (Autonomous save)</span>
+                  <span>Judge Mode (scenarios S1–S6)</span>
                   <span className="text-[#2ebd7b]">→</span>
                 </Link>
                 <Link
                   href="/merchant"
                   className="flex items-center justify-between rounded-lg border border-[#23272f] bg-[#121518] px-3 py-2 text-xs text-[#8b949e] hover:border-[#2ebd7b]/40 hover:text-white"
                 >
-                  <span>Inspect Decision Ledger ({ledger.data?.length ?? 0} rows)</span>
+                  <span>Full Decision Ledger ({ledger.data?.length ?? 0} rows)</span>
                   <span className="text-[#2ebd7b]">→</span>
                 </Link>
                 <Link
                   href="/buyer"
                   className="flex items-center justify-between rounded-lg border border-[#23272f] bg-[#121518] px-3 py-2 text-xs text-[#8b949e] hover:border-[#2ebd7b]/40 hover:text-white"
                 >
-                  <span>Open Maya&apos;s Agent &amp; Mandate</span>
+                  <span>Maya&apos;s Agent Inbox &amp; Mandate</span>
                   <span className="text-[#2ebd7b]">→</span>
                 </Link>
               </div>
@@ -644,13 +721,17 @@ export default function DashboardPage() {
             <div className="mt-4">
               {loadingDecision ? (
                 <p className="py-8 text-center text-xs text-[#8b949e]">Loading decision detail…</p>
+              ) : decisionError ? (
+                <p className="py-8 text-center text-xs text-[#d0545e]">
+                  Could not load decision: {decisionError}
+                </p>
               ) : selectedDecision ? (
                 <DecisionInspector
                   d={selectedDecision}
                   floorMinor={controls.data ? Number(controls.data.ev_floor_minor) : undefined}
                 />
               ) : (
-                <p className="py-8 text-center text-xs text-[#d0545e]">Could not load decision.</p>
+                <p className="py-8 text-center text-xs text-[#8b949e]">Decision not found.</p>
               )}
             </div>
 

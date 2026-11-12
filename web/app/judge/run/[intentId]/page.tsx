@@ -22,6 +22,19 @@ export default function LinkedRun() {
   const buyerSide = linked.data?.buyer ?? buyerDirect.data;
   const controls = usePoll(merchant.controls, 10000);
 
+  if (!intentId || intentId === "null") {
+    return (
+      <div className="space-y-4">
+        <Link href="/judge" className="text-sm text-muted hover:text-ink">
+          ← Back to Scenarios
+        </Link>
+        <p className="rounded-md border border-bad/50 bg-surface p-4 text-sm">
+          No checkout intent was created for this run (for example, when the buyer agent budget is exhausted). Press &quot;Reset both services&quot; in Judge mode and run it again.
+        </p>
+      </div>
+    );
+  }
+
   if (linked.error && !linked.data) {
     return <p className="rounded-md border border-bad/50 bg-surface p-4 text-sm">Couldn&apos;t load {intentId}: {linked.error}</p>;
   }

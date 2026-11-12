@@ -1,0 +1,40 @@
+To: janet@devpost.com
+Subject: PayPal AI Hackathon 2026 submission: Pact, payment recovery for AI agents
+
+Hi Janet,
+
+Here is our team's submission for the PayPal AI Hackathon 2026.
+
+Project: Pact: Payment Recovery for AI Agents on PayPal
+Tagline: When an agent's payment fails, nobody's watching. Pact is.
+Team: Devansh Bagaria, Divit Periwal, Aryan Singh
+
+WHAT IT DOES
+AI agents now make purchases for people. When an agent's payment is declined, no person sees the error, and existing recovery tools (dunning emails, SMS, "update your card" banners) all assume someone will. Pact fills that gap on PayPal:
+
+- The merchant engine works out why the payment was declined and scores each recovery option by expected profit.
+- It then replies with HTTP 402 Payment Required and a signed recovery offer, such as retrying with a different funding source.
+- The buyer's agent accepts the offer only if it passes a 12-check guard against the limits the person set for it.
+- Offers are signed with Ed25519 and tied to a single-use nonce, so a captured offer can't be replayed or redirected to another endpoint.
+- A 10% live holdout measures how many recoveries Pact actually caused, not just declines that would have cleared anyway.
+
+LINKS
+- Code repository (public, MIT license): https://github.com/devansh7439/Pact
+- Demo video (under 3 minutes): [YouTube link]
+- Run it locally: the README has full setup. With no credentials you can run "python -m pytest" (220 tests), start the three services, run "python -m scripts.seed", and open http://localhost:3000/judge to trigger demo scenarios S1-S5.
+
+AI TOOLS AND HOW THEY WERE USED
+- [Model name, provider], called through an OpenAI-compatible API, turns the buyer's plain-English instructions into a structured spending mandate and drafts recovery emails. Without an API key, both fall back to templates.
+- PayPal Agent Toolkit (read-only, orders.get only) powers Ask Pact, an assistant that answers merchant questions such as "why did we drop this recovery?"
+- scikit-learn: a calibrated random forest predicts how likely each recovery option is to succeed.
+- Thompson-sampling bandit: learns which recovery actions work for each kind of decline, within a profit floor.
+
+No model can capture funds, change an amount or touch an authorization. Only the deterministic policy and the buyer's mandate can do that.
+
+BUILT WITH
+PayPal Orders v2, PayPal Vault v3, PayPal Agent Toolkit, Python, FastAPI, Next.js, TypeScript, AG Grid, scikit-learn, SQLite
+
+Thanks for reviewing it.
+
+Best,
+Devansh Bagaria, Divit Periwal and Aryan Singh

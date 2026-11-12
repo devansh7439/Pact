@@ -17,6 +17,11 @@ export function DecisionInspector({ d, floorMinor }: { d: Decision; floorMinor?:
         <span className="font-mono text-xs text-muted">{d.decision_id}</span>
         {d.intent && <ProvenanceBadge p={d.intent.provenance} />}
         {d.held_out ? <span className="rounded bg-warn/10 px-1.5 py-0.5 text-xs text-warn">held out: no action</span> : null}
+        {t.holdout_exempt ? (
+          <span className="rounded bg-accent/10 px-1.5 py-0.5 text-xs text-accent" title="Never held out; excluded from holdout lift">
+            judge run
+          </span>
+        ) : null}
         {d.review_status && <span className="rounded bg-line px-1.5 py-0.5 text-xs">review {d.review_status}</span>}
       </div>
 

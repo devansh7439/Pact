@@ -28,6 +28,8 @@ export interface StageTrace {
   offer_actions: string[];
   eligible_funding_aliases: string[];
   execution_blocked_by: string | null;
+  /** "judge_scripted" for demo runs (never held out, excluded from lift); null for real traffic. */
+  holdout_exempt?: string | null;
 }
 
 export interface AuditRow {
@@ -107,6 +109,7 @@ export interface LedgerRow {
   failure_class: string | null;
   diagnosed_by: string | null;
   outcome: string | null;
+  judge_scripted?: number;
 }
 
 export interface Interval {

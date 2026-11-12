@@ -14,7 +14,7 @@
 
 ## Built With
 
-`paypal-orders-v2`, `paypal-vault-v3`, `paypal-agent-toolkit`, `python`, `fastapi`, `ed25519`, `scikit-learn`, `ag-grid`, `next.js`, `react`, `typescript`, `tailwind-css`, `pydantic`, `sqlite`, `thompson-sampling`, `bayesian-bandits`, `ai-agents`
+`paypal-orders-v2`, `paypal-vault-v3`, `python`, `fastapi`, `ed25519`, `scikit-learn`, `ag-grid`, `next.js`, `react`, `typescript`, `tailwind-css`, `pydantic`, `sqlite`, `thompson-sampling`, `bayesian-bandits`, `ai-agents`
 
 ---
 
@@ -39,6 +39,8 @@ The two sides talk over the **Pact Recovery Protocol (PRP v0.1)**, a small signe
 3. Maya's agent verifies the signature and runs the offer through 12 checks against her mandate. The amount hasn't changed, the merchant is on her list, she has budget left, and her mandate allows switching to her vaulted PayPal wallet.
 4. The agent captures with the wallet. The order goes through. Maya gets a receipt, not a problem to solve.
 
+In the demo video this flow runs in fixture mode, and the status panel says so ("PayPal: fixture"). See *What ran against the real sandbox* below.
+
 If the code had been `9500` (suspected fraud), step 3 would stop. Risk declines are never recovered automatically; Maya gets a one-tap approval link instead.
 
 **Merchant side (`pact-merchant`)**
@@ -60,8 +62,8 @@ $$\text{NEV}(a) = \big(\hat{P}(a) - \hat{P}(a_0)\big) \times \text{Amount} \time
 
 ### How we built it
 
-- **PayPal Orders v2 and Vault v3.** Captures go through `POST /v2/checkout/orders/{id}/capture` with `PayPal-Request-Id`, so a retry can never double-charge. At onboarding, Vault v3 setup tokens are exchanged for permanent `vault_id`s. Agent charges carry stored-credential fields (`payment_initiator: CUSTOMER`, `payment_type: ONE_TIME`, `usage: SUBSEQUENT`) that mark the agent as the customer's authorized delegate.
-- **Webhooks.** Seven events (`PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DECLINED`, `VAULT.PAYMENT-TOKEN.CREATED`, …) are verified with `POST /v1/notifications/verify-webhook-signature`. When a webhook and a reconciler poll race on the same capture, exactly one outcome is recorded.
+- **PayPal Orders v2 and Vault v3.** Captures go through `POST /v2/checkout/orders/{id}/capture` with `PayPal-Request-Id`, so a retry can never double-charge. The onboarding code exchanges Vault v3 setup tokens for permanent `vault_id`s, and the executor builds agent charges with stored-credential fields (`payment_initiator: CUSTOMER`, `payment_type: ONE_TIME`, `usage: SUBSEQUENT`) to mark the agent as the customer's authorized delegate. Order create and capture have run against the sandbox. The Vault and stored-credential paths haven't yet (see below).
+- **Webhooks.** Seven events (`PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DECLINED`, `VAULT.PAYMENT-TOKEN.CREATED`, …) are checked with `POST /v1/notifications/verify-webhook-signature` before anything acts on them. When a webhook and a reconciler poll race on the same capture, exactly one outcome is recorded. This is tested offline. No sandbox webhook has been received yet.
 - **PRP v0.1.** Ed25519 signatures over canonical JSON bind the HTTP method, path, timestamp (±300 s) and a single-use nonce, so a captured offer can't be replayed or redirected to another endpoint.
 - **Models.** An isotonic-calibrated random forest (scikit-learn) estimates \\( \hat{P} \\). A Beta-Bernoulli bandit with Thompson sampling learns which actions work for each failure class, with exploration capped so learning never spends past the profit floor.
 - **Stack.** Python 3.12, FastAPI, Pydantic and SQLite on the backend; Next.js 14, React, TypeScript, Tailwind and AG Grid on the frontend. One linked view puts the merchant's diagnosis and the buyer's checklist on a single timeline.
@@ -73,7 +75,7 @@ Our rule: **models advise; deterministic policy and the human's mandate decide.*
 - **Propensity model:** predicts \\( \hat{P}(a) \\) and \\( \hat{P}(a_0) \\). Every prediction is visible in the per-option inspector next to the arithmetic it feeds.
 - **Bandit:** shifts action priors as real outcomes arrive, inside the same profit floor.
 - **LLM:** turns Maya's plain-English request into a structured mandate and drafts recovery emails without dark patterns. With no API key, both fall back to templates.
-- **PayPal Agent Toolkit:** powers **Ask Pact**, a read-only assistant merchants can ask "why did we drop this recovery?" or "what state is this order in?"
+- **Ask Pact:** a read-only assistant merchants can ask "why did we drop this recovery?" or "what state is this order in?" It answers from the decision ledger and audit trail. It includes an adapter for the PayPal Agent Toolkit's read-only order lookup, but the toolkit isn't installed in our builds yet, so order state currently comes from Pact's own stored PayPal responses.
 - **The boundary:** no model can call anything that captures funds, changes an amount or touches an authorization.
 
 ### Challenges we ran into
@@ -82,16 +84,23 @@ Our rule: **models advise; deterministic policy and the human's mandate decide.*
 2. **Recovery tools take credit for luck.** Plenty of declines clear on their own: a brief issuer outage, a payday. Without a control group you can't tell recovery from luck, so we added the 10% live holdout and report lift with Wilson 95% confidence intervals.
 3. **Payment metadata is an attack surface.** Memo fields and error messages are text an attacker can write, and an LLM-driven agent will read them. Every offer field is untrusted: it goes through strict Pydantic schemas and injection scanners before anything acts on it.
 
+### What ran against the real sandbox
+
+- **Ran:** OAuth, then Orders v2 create → approval by a sandbox buyer → capture (`COMPLETED`), on 2026-11-12. The redacted request log is in [`scripts/spike/RESULTS.md`](../scripts/spike/RESULTS.md).
+- **Blocked:** saving a payment method. `POST /v3/vault/setup-tokens` returned `403 NOT_AUTHORIZED` for all five test cards and for the PayPal wallet. The likely cause is that save-payment-methods isn't enabled on our sandbox app.
+- **Not yet run against the sandbox:** everything that needs a saved method. That covers charging it without a redirect, the `5110`/`5120`/`9500` test-card declines, the stored-credential labels and webhooks. The code and offline tests for all of it are in the repo.
+- **The demo video** runs in fixture mode: PayPal's responses are canned, and the status panel shows "PayPal: fixture". Every metric in the console is labelled `sandbox`, `fixture` or `simulated`.
+
 ### Accomplishments that we're proud of
 
 - **220 tests, all passing:** unit, integration, invariant and property-based (Hypothesis), in CI on Python 3.12 and Node 20.
 - **Runs with zero credentials.** Merchant decisions, the buyer guard and simulated PayPal declines all work offline, so anyone can run the full flow without sandbox keys.
 - **Neither side can forge the other.** The merchant can't fake an "agent accepted" message without the buyer's private key, and the buyer can't fake an offer without the merchant's.
-- **Verified against the real sandbox** with PayPal test cards triggering `5110`, `5120` and `9500`.
+- **A real sandbox payment, end to end:** order created, approved by a sandbox buyer and captured, with the redacted log committed.
 
 ### Built during the hackathon
 
-- The full PayPal integration (Orders v2, Vault v3, stored credentials, webhook verification, Agent Toolkit); PRP v0.1 with Ed25519 signing; the buyer agent service, mandate store and 12-check guard; the bandit learning loop; Ask Pact; and the Next.js app, linked visualizer and AG Grid console.
+- The PayPal client (Orders v2, Vault v3, stored credentials, webhook verification, an Agent Toolkit adapter), sandbox-verified so far for order create and capture; PRP v0.1 with Ed25519 signing; the buyer agent service, mandate store and 12-check guard; the bandit learning loop; Ask Pact; and the Next.js app, linked visualizer and AG Grid console.
 
 ### AG Grid
 
@@ -99,6 +108,7 @@ The Merchant Console (`/merchant`) uses AG Grid for the **decision ledger**: eve
 
 ### What's next for Pact
 
+- **Finish the sandbox spike:** enable saving payment methods on the sandbox app, then run steps S2–S8 (saved-method charges, test-card declines, stored-credential labels, webhooks, toolkit).
 - **Publish PRP as an open RFC** for agent-to-merchant payment negotiation.
 - **Subscription renewals:** extend recovery to recurring billing failures (`BILLING.SUBSCRIPTION.PAYMENT.FAILED`).
 - **Hardware key storage:** keep signing keys in AWS Nitro Enclaves or Apple Secure Enclave for institutional deployments.

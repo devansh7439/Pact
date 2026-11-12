@@ -1,6 +1,8 @@
 # Spike results: PayPal feasibility (doc 09)
 
-**Status:** NOT RUN (no sandbox credentials yet) · **Timebox:** 3½ h · **Run by:** _ · **Date:** _
+**Status:** PARTIAL: S1 passed; S2 and S3 blocked by `403 NOT_AUTHORIZED` on `POST /v3/vault/setup-tokens`; S4–S8 not run · **Timebox:** 3½ h · **Date:** 2026-11-12
+
+The 403 ("Authorization failed due to insufficient permissions") hit all five test cards and the PayPal wallet. The likely cause is that the sandbox app doesn't have the save-payment-methods (Vault) feature enabled. Every step after S3 needs a saved payment method, so none of them has run.
 
 Sandbox app: `pact-merchant` · Business account: _ · Maya (personal): _ · Arjun (personal): _
 Secrets never go in this file. The scripts redact `Authorization`, tokens, CVVs and card numbers (first 4 and last 4 digits kept).
@@ -27,9 +29,9 @@ Ids carried between steps are kept in `scripts/spike/state.json`, which stays ou
 
 | # | Prove | Script | Result | Evidence (log entry / debug id) | Notes |
 |---|---|---|---|---|---|
-| S1 | Auth + basic order | `01_auth_order.py` | ☐ PASS ☐ FAIL | | |
-| S2 | Save a PayPal wallet | `02_vault_paypal.py` | ☐ PASS ☐ FAIL | | |
-| S3 | Save cards with decline triggers | `03_vault_cards.py` | ☐ PASS ☐ FAIL | | Do triggers survive vaulting? → S5 |
+| S1 | Auth + basic order | `01_auth_order.py` | ☑ PASS ☐ FAIL | order `6VX14008JC947302G`, capture `4UG61505X30485236` | Created, approved by a sandbox buyer, captured `COMPLETED` |
+| S2 | Save a PayPal wallet | `02_vault_paypal.py` | ☐ PASS ☑ FAIL | debug ids `f7083825e4d26`, `ca597b3a19c77`, `ca597b4794872` | 403 on setup token, three attempts |
+| S3 | Save cards with decline triggers | `03_vault_cards.py` | ☐ PASS ☑ FAIL | debug ids `f443778a3c836`, `f6914663309bf`, `f691466da1b41`, `f679861afc9ae`, `f704261e9e032` | 403 on setup token for all five cards |
 | S4 | Charge saved source, no redirect (wallet) | `04_charge_vaulted.py wallet` | ☐ PASS ☐ FAIL | | Completed on create or needed capture? |
 | S4 | Charge saved source, no redirect (card) | `04_charge_vaulted.py card card-clean` | ☐ PASS ☐ FAIL | | |
 | S4b | Encoding A (CUSTOMER/ONE_TIME/SUBSEQUENT) | `04 … --encoding A` | ☐ accepted ☐ rejected | | |

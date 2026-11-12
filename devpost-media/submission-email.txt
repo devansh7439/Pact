@@ -18,6 +18,8 @@ AI agents now make purchases for people. When an agent's payment is declined, no
 - Offers are signed with Ed25519 and tied to a single-use nonce, so a captured offer can't be replayed or redirected to another endpoint.
 - A 10% live holdout measures how many recoveries Pact actually caused, not just declines that would have cleared anyway.
 
+PayPal status: order create and capture are verified against the sandbox (log in scripts/spike/RESULTS.md). Saving payment methods (Vault v3) returned a 403 permission error on our sandbox app, so saved-method charges and test-card declines haven't run against the sandbox yet. The demo video runs in fixture mode and says so on screen.
+
 LINKS
 - Code repository (public, MIT license): https://github.com/devansh7439/Pact
 - Demo video (under 3 minutes): [YouTube link]
@@ -25,14 +27,14 @@ LINKS
 
 AI TOOLS AND HOW THEY WERE USED
 - OpenAI gpt-oss-120b, served by Groq through its OpenAI-compatible API, turns the buyer's plain-English instructions into a structured spending mandate and drafts recovery emails. Without an API key, both fall back to templates.
-- PayPal Agent Toolkit (read-only, orders.get only) powers Ask Pact, an assistant that answers merchant questions such as "why did we drop this recovery?"
+- Ask Pact, a read-only assistant, answers merchant questions such as "why did we drop this recovery?" from the decision ledger. It has an adapter for the PayPal Agent Toolkit's order lookup, which isn't installed in our builds yet.
 - scikit-learn: a calibrated random forest predicts how likely each recovery option is to succeed.
 - Thompson-sampling bandit: learns which recovery actions work for each kind of decline, within a profit floor.
 
 No model can capture funds, change an amount or touch an authorization. Only the deterministic policy and the buyer's mandate can do that.
 
 BUILT WITH
-PayPal Orders v2, PayPal Vault v3, PayPal Agent Toolkit, Python, FastAPI, Next.js, TypeScript, AG Grid, scikit-learn, SQLite
+PayPal Orders v2, PayPal Vault v3, Python, FastAPI, Next.js, TypeScript, AG Grid, scikit-learn, SQLite
 
 Thanks for reviewing it.
 

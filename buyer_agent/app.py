@@ -77,6 +77,12 @@ def create_app(
     if not b64:
         logger.warning("BUYER_SIGNING_KEY not set: using an ephemeral key (%s)", agent_key_id)
 
+    if settings.judge_mode and not store.active_mandate():
+        from buyer_agent.fixtures import mandate_dict
+        m = mandate_dict()
+        store.upsert_principal(PRINCIPAL_ID, "Maya")
+        store.save_mandate(m["mandate_id"], PRINCIPAL_ID, m, "ACTIVE")
+
     def client_for(merchant_id: str) -> tuple[PRPClient, dict[str, Any]]:
         link = store.merchant_link(merchant_id)
         if not link or not link.get("merchant_public_key"):

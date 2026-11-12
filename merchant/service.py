@@ -32,6 +32,7 @@ from merchant.db import (
     security_event,
     set_control,
 )
+from merchant.engine.bandit import bandit
 from merchant.engine.economics import MerchantPolicy, RecoveryAction
 from merchant.engine.executor import ExecutionBlocked, Executor, consent_problem
 from merchant.engine.pipeline import FailureDecision, Pipeline
@@ -652,7 +653,28 @@ class MerchantService:
                 conn.execute("UPDATE payment_intents SET state='LOST' WHERE intent_id=?", (intent_id,))
             if first:
                 audit(conn, intent_id, "VERIFY", {"source": source, "capture_id": capture_id})
+                # Stage LEARN: update Bayesian bandit posterior (doc 05 §6)
+                dec = self.db.one(
+                    "SELECT f.failure_class, d.chosen_action FROM decisions d "
+                    "LEFT JOIN attempts a ON a.intent_id = d.intent_id "
+                    "LEFT JOIN failures f ON f.attempt_id = a.attempt_id "
+                    "WHERE d.intent_id=? ORDER BY a.created_at DESC",
+                    (intent_id,)
+                )
+                if dec and dec["failure_class"] and dec["chosen_action"]:
+                    is_success = outcome in ("RECOVERED", "RECOVERED_BY_HUMAN", "PAID")
+                    updated_dist = bandit.record_outcome(dec["failure_class"], dec["chosen_action"], success=is_success)
+                    audit(conn, intent_id, "LEARN", {
+                        "failure_class": dec["failure_class"],
+                        "action": dec["chosen_action"],
+                        "success": is_success,
+                        "new_mean": round(updated_dist.mean, 4),
+                        "alpha": round(updated_dist.alpha, 2),
+                        "beta": round(updated_dist.beta, 2),
+                    })
+
         if first:
+
             self._callback(intent_id, outcome)
         return first
 

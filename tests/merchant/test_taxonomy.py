@@ -70,3 +70,16 @@ def test_doc_issue_mappings():
     assert ISSUES["INSTRUMENT_DECLINED"].failure_class is FailureClass.ISSUER_DECLINED
     assert ISSUES["TRANSACTION_REFUSED"].failure_class is FailureClass.ISSUER_DECLINED
     assert ISSUES["PAYER_ACTION_REQUIRED"].failure_class is FailureClass.AUTH_FAILURE
+    assert ISSUES["CARD_TYPE_UNSUPPORTED"].failure_class is FailureClass.INSTRUMENT_INVALID
+    assert ISSUES["MAX_NUMBER_OF_PAYMENT_ATTEMPTS_EXCEEDED"].failure_class is FailureClass.RISK_BLOCKED
+    assert ISSUES["REDIRECT_PAYER_FOR_ALTERNATE_FUNDING"].failure_class is FailureClass.INSUFFICIENT_FUNDS
+
+
+def test_expanded_processor_codes():
+    assert classify("1310").failure_class is FailureClass.INSTRUMENT_INVALID
+    assert classify("1320").failure_class is FailureClass.AUTH_FAILURE
+    assert classify("5110").failure_class is FailureClass.INSUFFICIENT_FUNDS
+    assert classify("5170").failure_class is FailureClass.MERCHANT_CONFIG
+    assert classify("9540").failure_class is FailureClass.RISK_BLOCKED
+    assert classify("9540").customer_actionable is False
+

@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     buyer_db_path: Path = DATA_DIR / "buyer.db"
     buyer_signing_key: str = ""  # base64url Ed25519 private key; never commit
     buyer_key_id: str = ""  # assigned at registration, e.g. agt_7f3c#k1
+    judge_mode: bool = False
 
     # Browser origins allowed to call this API (the Next.js web app).
     web_origins: str = "http://localhost:3000"

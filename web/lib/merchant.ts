@@ -265,4 +265,9 @@ export const merchant = {
     post<{ approve_url: string; setup_token: string }>(`/onboard/${token}/vault/paypal`, { alias }),
   onboardConfirm: (token: string, payer_id?: string) =>
     post<{ status: string; mandate_id: string; approval_ref: string }>(`/onboard/${token}/confirm`, { payer_id }),
+  assistantAsk: (question: string, intentId?: string) =>
+    post<{ question: string; answer: string; tool_used: string | null; data: Record<string, unknown>; mode: string }>(
+      "/assistant/ask",
+      { question, intent_id: intentId },
+    ),
 };

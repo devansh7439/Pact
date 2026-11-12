@@ -21,6 +21,7 @@ from merchant import console
 from merchant.config import Settings, settings as default_settings
 from merchant.db import Database, SqliteNonceStore, security_event
 from merchant.integrations import llm
+from merchant.assistant import AskPactAssistant, PactReadTools
 from merchant.judge import SCENARIOS, Judge, JudgeError
 from merchant.paypal import make_paypal
 from merchant.service import MerchantService, err
@@ -199,6 +200,19 @@ def create_app(service: MerchantService | None = None, *, cfg: Settings | None =
     @app.post("/console/reconcile")
     def reconcile() -> dict:
         return svc.reconcile(older_than_s=0)
+
+    # -- Ask Pact assistant (doc 04 §1, doc 10 §P4) ----------------------------------------
+    assistant = AskPactAssistant(PactReadTools(svc.db, svc.paypal))
+
+    @app.post("/assistant/ask")
+    async def assistant_ask(request: Request) -> JSONResponse:
+        body = await _json(request)
+        question = body.get("question", "").strip()
+        if not question:
+            return JSONResponse({"error": "question is required"}, status_code=400)
+        intent_id = body.get("intent_id")
+        res = assistant.ask(question, intent_id=intent_id)
+        return JSONResponse(res)
 
     # -- Human customer (Arjun's inbox) -----------------------------------------------------
     @app.get("/store/customers/{customer_id}/inbox")

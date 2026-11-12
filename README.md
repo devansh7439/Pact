@@ -10,12 +10,39 @@ phase as described in [`docs/10-build-plan.md`](docs/10-build-plan.md).
 ## Running it
 
 ```bash
+# Setup Python environment
 python -m venv .venv && .venv/Scripts/pip install -r requirements.txt   # Windows
 # source .venv/bin/activate && pip install -r requirements.txt          # macOS/Linux
-python -m pytest                       # offline: no PayPal or LLM credentials needed
-python -m merchant.ml.train            # trains the propensity model (SIMULATED data)
-python -m merchant.engine.evaluate     # do-nothing vs blind retry vs Pact, paired
+
+# Offline verification: 220 tests passing with zero external credentials needed
+python -m pytest
+
+# Train recovery propensity model & evaluate against blind retry
+python -m merchant.ml.train
+python -m merchant.engine.evaluate
 ```
+
+### Local Services & Judge Mode
+
+To explore the full UI with the linked agent visualizer and merchant console:
+
+```bash
+# Terminal 1: Merchant API (port 8100)
+python -m uvicorn merchant.app:app --port 8100
+
+# Terminal 2: Buyer Agent (port 8200)
+python -m uvicorn buyer_agent.app:app --port 8200
+
+# Terminal 3: Next.js Frontend (port 3000)
+cd web && npm run dev
+```
+
+Seed Maya's demo mandate and connect the agents:
+```bash
+python -m scripts.seed
+```
+
+Open **`http://localhost:3000/judge`** to trigger live demo scenarios (S1–S5), or **`http://localhost:3000/merchant`** to inspect the AG Grid ledger, live holdout, and Ask Pact recovery assistant.
 
 ---
 

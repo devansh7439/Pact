@@ -7,6 +7,7 @@ import type { ColDef, ValueFormatterParams } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { useMemo, useState } from "react";
 
+import { AskPact } from "@/components/AskPact";
 import { DecisionInspector, ProvenanceBadge } from "@/components/DecisionInspector";
 import { merchant, type Controls, type LedgerRow, type ModelMetrics, type ProvenanceMetrics } from "@/lib/merchant";
 import { fmt } from "@/lib/money";
@@ -77,6 +78,8 @@ export default function MerchantConsole() {
           ))}
       </section>
       {metrics.data && <p className="-mt-3 text-xs text-muted">{metrics.data.note}</p>}
+
+      <AskPact intentId={selected ? ledger.data?.find((r) => r.decision_id === selected)?.intent_id : undefined} />
 
       <section>
         <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-muted">Decision ledger</h2>

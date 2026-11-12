@@ -125,6 +125,17 @@ def test_judge_runs_are_exempt_from_the_holdout(judge):
     assert get_control(svc.db, "judge_scripted_customer", "") == ""   # flag cleared after runs
 
 
+def test_judge_runs_do_not_count_in_holdout_lift(judge):
+    """pact-e4: exempt runs must not inflate the 'acted' arm of the lift."""
+    merchant, _buyer, svc = judge
+    for _ in range(3):
+        merchant.post("/judge/scenarios/S1/run")
+    holdout = merchant.get("/console/metrics?provenance=fixture").json()["by_provenance"]["fixture"]["holdout"]
+    assert holdout["acted"]["n"] == 0 and holdout["held_out"]["n"] == 0
+    ledger = merchant.get("/console/ledger").json()
+    assert ledger and all(row["judge_scripted"] for row in ledger)
+
+
 def test_judge_endpoints_are_off_outside_judge_mode(tmp_path):
     cfg = Settings(_env_file=None, merchant_db_path=tmp_path / "m.db", judge_mode=False)
     svc = MerchantService(cfg, Database(cfg.merchant_db_path), FixturePayPal())

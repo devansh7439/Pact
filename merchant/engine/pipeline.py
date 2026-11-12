@@ -186,7 +186,8 @@ class Pipeline:
                         "base_propensity": round(propensity, 4), "propensity_source": source,
                         "offer_actions": [a.value for a in decision.offer_actions],
                         "eligible_funding_aliases": list(decision.eligible_funding_aliases),
-                        "execution_blocked_by": decision.execution_blocked_by}),
+                        "execution_blocked_by": decision.execution_blocked_by,
+                        "holdout_exempt": exempt}),
                  decision.action.value,
                  decision.valuation.net_ev_minor if decision.valuation else None,
                  dumps([r.to_dict() for r in decision.options]), int(held), self._mode(), now_iso()))

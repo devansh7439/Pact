@@ -51,6 +51,7 @@ def ledger(db: Database, limit: int = 500) -> list[dict[str, Any]]:
     """Rows for the AG Grid decision ledger."""
     rows = db.query(
         "SELECT d.decision_id, d.intent_id, d.chosen_action, d.nev_minor, d.held_out, d.mode, "
+        "json_extract(d.stage_trace_json, '$.holdout_exempt') IS NOT NULL AS judge_scripted, "
         "d.review_status, d.created_at, p.channel, p.amount_minor, p.currency_code, p.provenance, "
         "f.failure_class, f.diagnosed_by, o.outcome "
         "FROM decisions d JOIN payment_intents p ON p.intent_id=d.intent_id "
@@ -78,11 +79,13 @@ def metrics(db: Database, provenance: str | None = None) -> dict[str, Any]:
             "SELECT COUNT(*) n, SUM(o.outcome IN ('RECOVERED','RECOVERED_BY_HUMAN')) k "
             "FROM decisions d JOIN payment_intents p ON p.intent_id=d.intent_id "
             "LEFT JOIN outcomes o ON o.intent_id=d.intent_id "
-            "WHERE p.provenance=? AND d.held_out=0 AND d.chosen_action<>'DROP'", (prov,))
+            "WHERE p.provenance=? AND d.held_out=0 AND d.chosen_action<>'DROP' "
+            "AND json_extract(d.stage_trace_json, '$.holdout_exempt') IS NULL", (prov,))
         held = db.one(
             "SELECT COUNT(*) n, SUM(o.outcome='ORGANIC') k FROM decisions d "
             "JOIN payment_intents p ON p.intent_id=d.intent_id "
-            "LEFT JOIN outcomes o ON o.intent_id=d.intent_id WHERE p.provenance=? AND d.held_out=1",
+            "LEFT JOIN outcomes o ON o.intent_id=d.intent_id WHERE p.provenance=? AND d.held_out=1 "
+            "AND json_extract(d.stage_trace_json, '$.holdout_exempt') IS NULL",
             (prov,))
         out[prov] = {
             "intents_with_failures": r["intents"], "caused_minor": r["caused"],
@@ -91,7 +94,9 @@ def metrics(db: Database, provenance: str | None = None) -> dict[str, Any]:
             "holdout": lift_report(acted["k"] or 0, acted["n"] or 0,
                                    held["k"] or 0, held["n"] or 0).to_dict(),
         }
-    return {"by_provenance": out, "note": "Sandbox, fixture and simulated figures are never pooled."}
+    return {"by_provenance": out,
+            "note": "Sandbox, fixture and simulated figures are never pooled. Judge-scripted "
+                    "demo runs are excluded from both holdout arms."}
 
 
 def model_metrics() -> dict[str, Any]:

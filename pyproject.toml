@@ -1,0 +1,14 @@
+[project]
+name = "pact"
+version = "0.3.0"
+description = "Pact — payment recovery for AI agents, on PayPal"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "slow: trains a model or runs a large batch (deselect with -m 'not slow')",
+]

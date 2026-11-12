@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pact.example/schemas/prp/0.1/mandate.schema.json",
+  "title": "Buyer Agent Mandate v0.1",
+  "description": "Limits a human principal approved for their buyer agent. Drafted by an LLM, validated against this schema, activated only after the human approves it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mandate_id", "principal", "merchant_scope", "currency_code", "budget", "per_purchase_cap_minor", "allowed_categories", "funding", "recovery", "expires_at"],
+  "properties": {
+    "mandate_id": { "type": "string", "pattern": "^mdt_[0-9A-Za-z]{10,40}$" },
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["display_name"],
+      "properties": {
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "paypal_payer_id": { "type": "string", "pattern": "^[A-Z0-9]{8,20}$" }
+      }
+    },
+    "merchant_scope": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^mer_[0-9a-z_]{3,40}$" }
+    },
+    "currency_code": { "type": "string", "pattern": "^[A-Z]{3}$" },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["period", "limit_minor"],
+      "properties": {
+        "period": { "enum": ["DAY", "WEEK", "MONTH"] },
+        "limit_minor": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "per_purchase_cap_minor": { "type": "integer", "minimum": 1 },
+    "allowed_categories": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z0-9-]{2,40}$" }
+    },
+    "funding": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["alias", "kind", "priority"],
+        "properties": {
+          "alias": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,39}$" },
+          "kind": { "enum": ["CARD", "PAYPAL_WALLET"] },
+          "priority": { "type": "integer", "minimum": 1, "maximum": 5 }
+        }
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allow_alternate_funding", "allow_retry_after", "max_autonomous_recoveries_per_purchase", "always_escalate_classes"],
+      "properties": {
+        "allow_alternate_funding": { "type": "boolean" },
+        "allow_retry_after": { "type": "boolean" },
+        "max_autonomous_recoveries_per_purchase": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "always_escalate_classes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["INSUFFICIENT_FUNDS", "INSTRUMENT_INVALID", "ISSUER_DECLINED", "AUTH_FAILURE", "RISK_BLOCKED", "UNKNOWN"] },
+          "contains": { "const": "RISK_BLOCKED" }
+        }
+      }
+    },
+    "approved_at": { "type": "string", "format": "date-time" },
+    "approval_ref": { "type": "string", "pattern": "^onb_[0-9A-Za-z]{10,40}$" },
+    "expires_at": { "type": "string", "format": "date-time" }
+  }
+}

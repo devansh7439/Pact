@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pact.example/schemas/prp/0.1/recovery_response.schema.json",
+  "title": "PRP v0.1 Offer Acceptance",
+  "description": "Sent by a buyer agent to accept exactly one option of a recovery offer. Idempotent on (offer_id, option_id).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["prp_version", "offer_id", "option_id", "mandate_id", "agent_decision_ref", "idempotency_key"],
+  "properties": {
+    "prp_version": { "const": "0.1" },
+    "offer_id": { "type": "string", "pattern": "^off_[0-9A-Za-z]{10,40}$" },
+    "option_id": { "type": "string", "pattern": "^opt_[0-9a-z_]{1,32}$" },
+    "funding_alias": {
+      "description": "Required for ALTERNATE_FUNDING and RETRY_AFTER; must be one of the option's eligible_funding_aliases.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,39}$"
+    },
+    "mandate_id": { "type": "string", "pattern": "^mdt_[0-9A-Za-z]{10,40}$" },
+    "agent_decision_ref": { "type": "string", "pattern": "^gd_[0-9A-Za-z]{10,40}$" },
+    "idempotency_key": { "type": "string", "minLength": 8, "maxLength": 108 }
+  }
+}

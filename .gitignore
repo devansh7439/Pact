@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+
+# Secrets — never commit
+.env
+.env.local
+
+# Runtime data (models and databases are rebuilt by scripts)
+data/*.db
+data/*.db-*
+data/*.joblib
+data/*.csv
+
+# Spike: sandbox ids carried between steps, and captured webhook bodies
+scripts/spike/state.json
+scripts/spike/webhooks/
+
+# Web
+node_modules/
+.next/
+out/
+
+# Local-only material (old blueprint zip, superseded drafts)
+_archive/
+*-blueprint-v0.2/
+
+# OS
+.DS_Store
+Thumbs.db

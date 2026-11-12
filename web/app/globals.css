@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Colour tokens as "r g b" so Tailwind alpha modifiers work. */
+:root {
+  --bg: 248 247 244;
+  --surface: 255 255 255;
+  --line: 226 223 216;
+  --ink: 28 27 25;
+  --muted: 107 103 96;
+  --accent: 37 84 199;
+  --ok: 22 128 72;
+  --warn: 178 106 0;
+  --bad: 190 38 38;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: 20 20 19;
+    --surface: 30 30 28;
+    --line: 58 57 53;
+    --ink: 236 234 229;
+    --muted: 160 156 148;
+    --accent: 122 160 255;
+    --ok: 86 196 128;
+    --warn: 232 170 70;
+    --bad: 240 110 110;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: 20 20 19;
+  --surface: 30 30 28;
+  --line: 58 57 53;
+  --ink: 236 234 229;
+  --muted: 160 156 148;
+  --accent: 122 160 255;
+  --ok: 86 196 128;
+  --warn: 232 170 70;
+  --bad: 240 110 110;
+  color-scheme: dark;
+}
+
+body {
+  background: rgb(var(--bg));
+  color: rgb(var(--ink));
+}
+
+:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+}

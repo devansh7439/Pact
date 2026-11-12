@@ -1,0 +1,48 @@
+{
+  "provenance": "simulated",
+  "n_total": 8000,
+  "n_train": 5351,
+  "n_test": 1815,
+  "n_excluded": 834,
+  "base_rate": 0.3538,
+  "roc_auc": 0.5632,
+  "brier": 0.2276,
+  "brier_baseline": 0.2297,
+  "brier_improvement": 0.0092,
+  "propensity_correlation": 0.5685,
+  "oracle_auc": 0.5911,
+  "oracle_brier": 0.2245,
+  "signal_captured": 0.6936,
+  "calibration_bins": [
+    {
+      "range": "0.00-0.12",
+      "n": 4,
+      "predicted": 0.0786,
+      "observed": 0.25
+    },
+    {
+      "range": "0.12-0.25",
+      "n": 36,
+      "predicted": 0.2066,
+      "observed": 0.25
+    },
+    {
+      "range": "0.25-0.38",
+      "n": 1155,
+      "predicted": 0.331,
+      "observed": 0.329
+    },
+    {
+      "range": "0.38-0.50",
+      "n": 611,
+      "predicted": 0.4125,
+      "observed": 0.4206
+    },
+    {
+      "range": "0.50-0.62",
+      "n": 9,
+      "predicted": 0.522,
+      "observed": 0.2222
+    }
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pact.example/schemas/prp/0.1/recovery_offer.schema.json",
+  "title": "PRP v0.1 Recovery Offer",
+  "description": "Issued by a merchant after an agent-initiated payment is declined. Decisions may only use structured fields; display.text is untrusted.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["prp_version", "offer_id", "intent_id", "merchant", "created_at", "expires_at", "amount", "failure", "options", "decision_ref", "display"],
+  "properties": {
+    "prp_version": { "const": "0.1" },
+    "offer_id": { "type": "string", "pattern": "^off_[0-9A-Za-z]{10,40}$" },
+    "intent_id": { "type": "string", "pattern": "^pi_[0-9A-Za-z]{10,40}$" },
+    "merchant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^mer_[0-9a-z_]{3,40}$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 }
+      }
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "amount": { "$ref": "#/$defs/money" },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "retry_same_instrument", "failed_funding_alias"],
+      "properties": {
+        "class": { "$ref": "#/$defs/failure_class" },
+        "retry_same_instrument": { "type": "boolean" },
+        "failed_funding_alias": { "$ref": "#/$defs/alias" },
+        "paypal": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "processor_response_code": { "type": "string", "pattern": "^[0-9A-Z]{4}$" },
+            "processor_response_name": { "type": "string", "pattern": "^[A-Z0-9_]{2,64}$" },
+            "issue": { "type": "string", "pattern": "^[A-Z0-9_]{2,64}$" }
+          }
+        }
+      }
+    },
+    "options": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "items": { "$ref": "#/$defs/option" }
+    },
+    "decision_ref": { "type": "string", "pattern": "^dec_[0-9A-Za-z]{10,40}$" },
+    "display": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["untrusted", "locale", "text"],
+      "properties": {
+        "untrusted": { "const": true },
+        "locale": { "type": "string", "pattern": "^[a-z]{2}(-[A-Z]{2})?$" },
+        "text": { "type": "string", "maxLength": 500 }
+      }
+    }
+  },
+  "$defs": {
+    "money": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currency_code", "value_minor"],
+      "properties": {
+        "currency_code": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "value_minor": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "alias": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,39}$" },
+    "failure_class": {
+      "enum": ["INSUFFICIENT_FUNDS", "INSTRUMENT_INVALID", "ISSUER_DECLINED", "AUTH_FAILURE", "RISK_BLOCKED", "UNKNOWN"]
+    },
+    "option": {
+      "type": "object",
+      "required": ["option_id", "kind"],
+      "properties": {
+        "option_id": { "type": "string", "pattern": "^opt_[0-9a-z_]{1,32}$" },
+        "kind": { "enum": ["ALTERNATE_FUNDING", "RETRY_AFTER", "PAYER_ACTION", "CANCEL"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "ALTERNATE_FUNDING" } } },
+          "then": {
+            "required": ["eligible_funding_aliases"],
+            "properties": {
+              "option_id": true,
+              "kind": true,
+              "eligible_funding_aliases": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/alias" } }
+            },
+            "additionalProperties": false
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "RETRY_AFTER" } } },
+          "then": {
+            "required": ["not_before", "eligible_funding_aliases"],
+            "properties": {
+              "option_id": true,
+              "kind": true,
+              "not_before": { "type": "string", "format": "date-time" },
+              "eligible_funding_aliases": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/alias" } }
+            },
+            "additionalProperties": false
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "enum": ["PAYER_ACTION", "CANCEL"] } } },
+          "then": {
+            "properties": { "option_id": true, "kind": true },
+            "additionalProperties": false
+          }
+        }
+      ]
+    }
+  }
+}

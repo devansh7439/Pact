@@ -74,4 +74,6 @@ Unowned and unclaimed: P4 Ask Pact (`merchant/assistant/**`, needs a handover fr
 2026-11-12  pact-6e  re-register idempotent for same key (f3 cold-start blocker); PRP outcome PAID->ORGANIC on wire; judge runs exempt from holdout and excluded from holdout metrics (+ judge_scripted ledger field); I15 test, so all 18 doc 08 invariants are covered; docs 01-03 + CONTEXT updated (tests: 205 pass / 0 fail)
 2026-11-12  pact-e4  web/: redesign UI with dark palette, left sidebar, real live overview (metrics, failure class breakdown, controls & kill switch, review queue actions, decisions table w/ inspector)  (tests: 205 pass / 0 fail; tsc clean, next build ok)
 2026-11-12  pact-e4  web/: fix review items — clear kill-switch label, reactive provenance filter, safe Blob CSV export, race-free decision inspector, graceful null intentId handling in /judge/run/[intentId], deduplicated KPI cards and sidebar navigation  (tests: 205 pass / 0 fail; tsc clean, next build ok)
+2026-11-12  pact-e4  web/: redesign /judge into Agent Mission Control operator workspace (3-column layout, real S1-S6 runs via merchant API, live center timeline, action console with governance controls, reset & role switching)  (tests: 205 pass / 0 fail; tsc clean, next build ok)
 ```
+

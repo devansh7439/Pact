@@ -379,14 +379,9 @@ export default function DashboardPage() {
 
       {/* Analytics Breakdown Grid */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-        <div className="rounded-2xl border border-[#1b1f24] bg-[#0d0f0e] p-6 lg:col-span-8">
+        <div className="rounded-2xl border border-[#1b1f24] bg-[#0d0f0e] p-6 lg:col-span-8 space-y-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-white">Decline Diagnosis &amp; Policy Actions</h2>
-              <p className="mt-0.5 text-xs text-[#8b949e]">
-                Breakdown of declines and evaluated actions ({filteredLedger.length} orders shown)
-              </p>
-            </div>
+            <h2 className="text-sm font-semibold text-white">Decline Diagnosis &amp; Policy Actions</h2>
 
             {/* Provenance Selector Filter */}
             <div className="flex items-center gap-1 rounded-lg border border-[#23272f] bg-[#121518] p-1 text-xs">
@@ -406,88 +401,83 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Failure Class Breakdown */}
-          <div className="mt-6 space-y-4">
-            <div className="text-xs font-medium uppercase tracking-wider text-[#6e7681]">
-              Diagnosed Failure Classes ({failureBreakdown.length} classes in {selectedProvenance} view)
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Failure Classes */}
+            <div className="space-y-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-[#6e7681]">
+                Diagnosed Failures
+              </div>
 
-            {failureBreakdown.length > 0 ? (
-              <div className="space-y-3">
-                {failureBreakdown.map(([fc, stat]) => {
-                  const pct = Math.round((stat.count / (filteredLedger.length || 1)) * 100);
-                  return (
-                    <div key={fc} className="space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-mono text-white">{fc}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[#8b949e]">{fmt(stat.totalMinor)}</span>
-                          <span className="font-semibold text-[#2ebd7b]">{stat.count} orders ({pct}%)</span>
-                        </div>
-                      </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-[#161a22]">
-                        <div
-                          style={{ width: `${pct}%` }}
-                          className="h-full rounded-full bg-gradient-to-r from-[#2ebd7b] to-[#a8b858]"
-                        />
+              {failureBreakdown.length > 0 ? (
+                <div className="space-y-2">
+                  {failureBreakdown.slice(0, 5).map(([fc, stat]) => (
+                    <div
+                      key={fc}
+                      className="flex items-center justify-between rounded-lg border border-[#1b1f24] bg-[#121518] px-3 py-2 text-xs"
+                    >
+                      <span className="font-mono text-white text-[11px] truncate max-w-[150px]">{fc}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#8b949e]">{fmt(stat.totalMinor)}</span>
+                        <span className="rounded bg-[#1a231e] px-1.5 py-0.5 font-semibold text-[#2ebd7b] text-[10px]">
+                          {stat.count}
+                        </span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="py-4 text-xs text-[#8b949e]">
-                No declines recorded under {selectedProvenance} yet.
-              </p>
-            )}
-          </div>
-
-          {/* Actions Executed */}
-          <div className="mt-6 border-t border-[#1b1f24] pt-5">
-            <div className="text-xs font-medium uppercase tracking-wider text-[#6e7681]">
-              Engine Decisions Executed
+                  ))}
+                </div>
+              ) : (
+                <p className="py-2 text-xs text-[#8b949e]">No declines recorded.</p>
+              )}
             </div>
-            {actionBreakdown.length > 0 ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {actionBreakdown.map(([act, count]) => (
-                  <div
-                    key={act}
-                    className="flex items-center gap-2 rounded-lg border border-[#23272f] bg-[#121518] px-3 py-1.5 text-xs"
-                  >
-                    <span className="font-mono text-white">{act}</span>
-                    <span className="rounded bg-[#13261c] px-1.5 py-0.5 font-semibold text-[#2ebd7b]">
-                      {count}
-                    </span>
-                  </div>
-                ))}
+
+            {/* Actions Executed */}
+            <div className="space-y-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-[#6e7681]">
+                Decisions Executed
               </div>
-            ) : (
-              <p className="mt-2 text-xs text-[#8b949e]">No actions executed in this slice.</p>
-            )}
+
+              {actionBreakdown.length > 0 ? (
+                <div className="space-y-2">
+                  {actionBreakdown.map(([act, count]) => (
+                    <div
+                      key={act}
+                      className="flex items-center justify-between rounded-lg border border-[#1b1f24] bg-[#121518] px-3 py-2 text-xs"
+                    >
+                      <span className="font-mono text-white text-[11px]">{act}</span>
+                      <span className="rounded bg-[#13261c] px-2 py-0.5 font-semibold text-[#2ebd7b] text-[11px]">
+                        {count} orders
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="py-2 text-xs text-[#8b949e]">No actions executed in this slice.</p>
+              )}
+            </div>
           </div>
 
           {/* Holdout Statistics */}
           {activeProvenanceData && (
-            <div className="mt-6 rounded-xl border border-[#1b1f24] bg-[#121518] p-4 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-white uppercase">{holdoutProvKey} Holdout Lift</span>
-                <span className="text-[#6e7681]">Wilson 95% Interval</span>
+            <div className="rounded-xl border border-[#1b1f24] bg-[#121518] p-3.5 text-xs">
+              <div className="flex items-center justify-between text-[#8b949e] mb-2">
+                <span className="font-semibold text-white uppercase text-[11px]">{holdoutProvKey} Causal Holdout Lift</span>
+                <span className="text-[10px]">95% Confidence</span>
               </div>
-              <div className="mt-2 grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
                 <div>
-                  <span className="text-[#6e7681] block">Intents:</span>
+                  <span className="text-[#6e7681] text-[11px] block">Intents</span>
                   <span className="font-semibold text-white">{activeProvenanceData.intents_with_failures}</span>
                 </div>
                 <div>
-                  <span className="text-[#6e7681] block">Caused:</span>
+                  <span className="text-[#6e7681] text-[11px] block">Caused Lift</span>
                   <span className="font-semibold text-[#2ebd7b]">{fmt(activeProvenanceData.caused_minor)}</span>
                 </div>
                 <div>
-                  <span className="text-[#6e7681] block">Organic:</span>
+                  <span className="text-[#6e7681] text-[11px] block">Organic Retries</span>
                   <span className="font-semibold text-white">{fmt(activeProvenanceData.organic_minor)}</span>
                 </div>
                 <div>
-                  <span className="text-[#6e7681] block">Lift:</span>
+                  <span className="text-[#6e7681] text-[11px] block">Estimated Lift</span>
                   <span className="font-semibold text-[#2ebd7b]">
                     {activeProvenanceData.holdout.enough_data && activeProvenanceData.holdout.lift !== null
                       ? `${(activeProvenanceData.holdout.lift * 100).toFixed(1)}%`
@@ -636,7 +626,7 @@ export default function DashboardPage() {
 
         <div className="mt-4 overflow-x-auto">
           {ledger.data && ledger.data.length > 0 ? (
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs [&_td:first-child]:pl-0 [&_td]:whitespace-nowrap [&_td]:px-3 [&_th:first-child]:pl-0 [&_th]:px-3">
               <thead className="text-[#6e7681] border-b border-[#1b1f24]">
                 <tr>
                   <th className="pb-2 font-normal">When</th>

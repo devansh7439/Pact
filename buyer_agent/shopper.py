@@ -124,14 +124,17 @@ def terms_template(text: str) -> MandateTerms | None:
 async def draft_terms(text: str, http: httpx.AsyncClient | None = None) -> MandateTerms | None:
     if not settings.llm_live:
         return terms_template(text)
+    payload: dict[str, Any] = {"model": settings.llm_model, "max_tokens": 200, "messages": [
+        {"role": "system", "content": MANDATE_SYSTEM},
+        {"role": "user", "content": json.dumps({"words": text})}]}
+    if settings.llm_reasoning_effort:
+        payload["reasoning_effort"] = settings.llm_reasoning_effort
     own = http is None
     http = http or httpx.AsyncClient(timeout=20.0)
     try:
         r = await http.post(settings.llm_base_url.rstrip("/") + "/chat/completions",
                             headers={"Authorization": f"Bearer {settings.llm_api_key}"},
-                            json={"model": settings.llm_model, "max_tokens": 200, "messages": [
-                                {"role": "system", "content": MANDATE_SYSTEM},
-                                {"role": "user", "content": json.dumps({"words": text})}]})
+                            json=payload)
         r.raise_for_status()
         out = r.json()["choices"][0]["message"]["content"]
         terms = MandateTerms.model_validate(json.loads(out[out.find("{"): out.rfind("}") + 1]))

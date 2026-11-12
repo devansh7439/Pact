@@ -76,6 +76,8 @@ Unowned and unclaimed: P4 Ask Pact (`merchant/assistant/**`, needs a handover fr
 2026-11-12  pact-e4  web/: fix review items — clear kill-switch label, reactive provenance filter, safe Blob CSV export, race-free decision inspector, graceful null intentId handling in /judge/run/[intentId], deduplicated KPI cards and sidebar navigation  (tests: 205 pass / 0 fail; tsc clean, next build ok)
 2026-11-12  pact-e4  web/: redesign /judge into Agent Mission Control operator workspace (3-column layout, real S1-S6 runs via merchant API, live center timeline, action console with governance controls, reset & role switching)  (tests: 205 pass / 0 fail; tsc clean, next build ok)
 2026-11-12  pact-e4  web/: redesign /buyer (Maya Agent) into BankRails financial autonomy dashboard (BankRails sidebar, 4 KPI cards, Recent Transactions with squircle icons & PRP checklist inspection, Active Agents, Spend Rules, conversational prompt bar, modals for Approvals, Funds, Rules, Keys)  (tests: 205 pass / 0 fail; tsc clean, next build ok)
+2026-11-12  pact-e4  web/: make Maya visual references a linear step-by-step chronological recovery timeline (Decline -> Diagnosis -> PRP Offer -> Guard Verification -> Settlement), removing mock multi-agent sidecars in favor of linear PRP execution audit  (tests: 205 pass / 0 fail; tsc clean, next build ok)
 ```
+
 
 

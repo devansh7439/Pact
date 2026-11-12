@@ -119,42 +119,13 @@ pact/
     └── e2e/                      # both services + mocked PayPal; one sandbox smoke test
 ```
 
-## 4. Reuse map
-
-The decision core carries over. Everything that touched the previous payment
-processor is rewritten against PayPal.
-
-| Module | Fate | Change |
-|---|---|---|
-| `policy.py` | **Adapt** | Keep the three ordered stages; add channel-aware eligibility (agent vs human) and new hard constraints |
-| `economics.py` | **Adapt** | Integer cents + currency; new actions (`ALTERNATE_FUNDING_OFFER`, `PAYER_ACTION_OFFER`, `CHECKOUT_LINK`) |
-| `controls.py` | Keep | Kill switch and review-first mode as-is |
-| `ml/` | Keep, retrain | New features: channel, alternate-funding count, PayPal decline class |
-| `bandit.py`, `learning.py`, `evaluate.py` | Keep | `evaluate.py` gains live-holdout reporting |
-| `provenance.py` | Keep | Same rule: simulated events never call PayPal or the LLM |
-| `diagnosis.py` | Adapt | LLM fallback reads PayPal error `details[].description` instead |
-| `integrations/llm.py` | Adapt | Multilingual copy instead of a single locale; keep the dark-pattern scanner |
-| `taxonomy.py` | **Rewrite** | PayPal processor response codes and Orders v2 issues |
-| previous processor client | **Delete** | Replaced by `merchant/paypal/` |
-| `verification.py` | Rewrite | PayPal webhook events + order polling |
-| `verify_live.py` | Rewrite | Exercises OAuth, orders, vault, webhook verification |
-| `simulator/` | Adapt | PayPal codes, USD, agent vs human channel |
-| `db.py` | Adapt | New tables (doc 07) |
-| frontend | Rebuild | Two personas + judge mode; AG Grid ledger; keep the decision-inspector concept |
-| guardrail tests | Port | Re-pointed at the new taxonomy |
-
-### Port status (v0.3, 2026-11-12)
-
-
-| Done — in `merchant/`, tests green | Still to do |
-|---|---|
-| Ported: `engine/taxonomy.py` (rewritten for PayPal), `economics.py`, `policy.py`, `controls.py`, `provenance.py`, `diagnosis.py`, `evaluate.py`, `integrations/llm.py`, `ml/`, `simulator/`. New: `engine/holdout.py`, `db.py` (doc 07 schema, append-only audit enforced by triggers), `paypal/` (live client + offline fixture), `engine/executor.py`, `engine/pipeline.py`, `agent_api/offers.py`, `service.py` (agent API, onboarding, webhooks, reconciler, review queue, callbacks), `console.py`, `judge.py`, `app.py`, `scripts/seed.py` | `bandit.py`, `learning.py` (LEARN stage; cut in deadline mode); `verify_live.py` and spike-verified PayPal behaviour (needs sandbox credentials); Ask Pact assistant (P4) |
+## 4. Build notes
 
 Layout note: doc §3 sketched `paypal/{auth,orders,vault,webhooks}.py`; the build uses
 `paypal/client.py` (live), `paypal/fixture.py` (offline) and `paypal/types.py`, and
 `verification`/`reconciler` live in `service.py`.
 
-Fixes made while porting (each covered by a test):
+Fixes made during the build (each covered by a test):
 
 - Evaluation let a contact-capped customer fall through to `ESCALATE`, i.e. ops
   contacting the customer anyway. Escalation is now blocked alongside contact,

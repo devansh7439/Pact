@@ -48,7 +48,9 @@ appear naturally.
 8. **What's next** — publishing PRP as an open draft, subscription renewals, more
    funding types, key rotation tooling.
 9. **Built during the hackathon** — a short list of what was built in the
-   submission period.
+   submission period, plus the one-line prior-work disclosure exactly as it
+   appears in the README. The rules allow updated projects when the update is
+   significant and explained; saying it plainly removes any doubt.
 10. **Data honesty** — what is sandbox, fixture and simulated.
 
 ## 3. Testing instructions (template)

@@ -17,10 +17,10 @@ Every candidate action ends up as a row in the per-option table, with either its
 valuation or the rule that removed it, so the console can show what the engine
 refused to consider as well as what it chose.
 
-Channel-aware (agent vs human channel); HARD_RISK_NO_AUTONOMY narrows to payer action / review instead of
-dropping; HARD_NO_SAME_INSTRUMENT, HARD_CONSENT_INVALID, HARD_AGENT_NOT_REGISTERED
-added; offer option sets and the per-option table; reduced ceiling for LLM
-diagnoses moved in from the old pipeline.
+Channel-aware: agent and human channels get different action sets.
+HARD_RISK_NO_AUTONOMY narrows to payer action / review rather than dropping, and
+HARD_NO_SAME_INSTRUMENT, HARD_CONSENT_INVALID and HARD_AGENT_NOT_REGISTERED guard
+the agent channel. LLM diagnoses carry a reduced confidence ceiling.
 """
 
 from __future__ import annotations
@@ -293,8 +293,8 @@ def decide(
         # When the customer may not be contacted, escalating to ops is no way
         # around it: ops recovering a customer-actionable decline means contacting
         # the customer. Only config faults and risk reviews stay escalatable.
-        # (Without this, a contact-capped payment falls through
-        # to ESCALATE — 109 of 1,000 decisions in the evaluation batch.)
+        # (Without this, a contact-capped payment falls through to ESCALATE —
+        # 109 of 1,000 decisions in the evaluation batch.)
         no_contact = set(CUSTOMER_CONTACT)
         if fc not in (FailureClass.MERCHANT_CONFIG, FailureClass.RISK_BLOCKED):
             no_contact.add(A.ESCALATE)

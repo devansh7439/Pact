@@ -104,7 +104,7 @@ Each block ends in something demoable, so stopping early still leaves a submissi
 | Block | Hours | Build | Cut |
 |---|---:|---|---|
 | D0 Spike | 2.5 | Spike steps S1, S2, S4, S4b, S5/S5b, S6 only | Spike steps S7 webhooks (use polling) and S8 toolkit |
-| D1 Merchant core | 7 | PayPal client, taxonomy (trigger codes only + `UNKNOWN`), ported policy/economics with consent check, per-option table data, polling verification | Holdout, full code list, bandit/learning, retraining (same model structure with a quickly regenerated simulator) |
+| D1 Merchant core | 7 | PayPal client, taxonomy (trigger codes only + `UNKNOWN`), policy/economics with consent check, per-option table data, polling verification | Holdout, full code list, bandit/learning, retraining (same model structure with a quickly regenerated simulator) |
 | D2 Agent layer | 6 | Ed25519 signing, register/checkout/accept, offer builder, guard + checklist, mandate seeded (no LLM drafting) | Onboarding UI (seed the vault tokens via spike scripts), callbacks, pause switch |
 | D3 UI | 4 | Linked view only: merchant pane (per-option table) + buyer pane (checklist) + timeline; scenario buttons | Full console, AG Grid ledger, review queue, Ask Pact |
 | D4 Deploy | 1.5 | Render, judge reset | — |

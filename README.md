@@ -91,10 +91,10 @@ checkouts too.
 **v0.3** — started building:
 
 - **Pact Recovery Protocol (PRP v0.1):** `PRP-*` headers, `prp_version`, `shared/prp/`.
-- **Merchant engine on PayPal:** PayPal taxonomy, economics in
-  USD cents with PayPal's fee, the three-stage policy with agent/human channels,
-  consent and same-instrument rules, offer option sets and the per-option table,
-  live holdout, simulator, model, evaluation. Status and fixes in doc 02 §4.
+- **Merchant engine on PayPal:** PayPal taxonomy, economics in USD cents with
+  PayPal's fee, the three-stage policy with agent/human channels, consent and
+  same-instrument rules, offer option sets and the per-option table, live
+  holdout, simulator, model, evaluation.
 - **Per-option table** in doc 05 now shows numbers the code actually computes.
 
 **v0.2** — changes after an external design review:
